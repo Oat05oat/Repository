@@ -92,7 +92,7 @@ function handleLoginPage() {
       });
   }
 
-  // ลืมรหัสผ่าน (หน้าตาสวยงาม)
+  // 🔥 ลืมรหัสผ่าน (นำหน้าตาสวยงามแบบเดิมกลับมา)
   const forgotPasswordLink = document.getElementById("forgotPasswordLink");
   if (forgotPasswordLink) {
     forgotPasswordLink.addEventListener("click", (e) => {
@@ -189,7 +189,7 @@ function handleDashboardPage() {
 function renderDashboard(user, notifications, rewards) {
   const app = document.getElementById("app");
   const rewardsByCategory = rewards.reduce((acc, reward) => { (acc[reward.category] = acc[reward.category] || []).push(reward); return acc; }, {});
-  const cleanPhone = user.phone.replace(/'/g, ''); // ล้างเครื่องหมาย '
+  const cleanPhone = user.phone.replace(/'/g, ''); 
 
   let expiryMessageHtml = `<p class="mb-0 text-white-50 small"><i class="bi bi-info-circle me-1"></i> แต้มหมดอายุทุก 31 ธ.ค. ของปีถัดไป</p>`;
   if (user.expiringPoints > 0) {
@@ -198,7 +198,6 @@ function renderDashboard(user, notifications, rewards) {
 
   const customStyles = `<style>body { background: linear-gradient(-45deg, #e0e7ff, #f8fafc, #ede9fe, #f1f5f9); background-size: 400% 400%; animation: gradientBG 15s ease infinite; } @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } } .swipe-container::-webkit-scrollbar { display: none; } .swipe-container { -ms-overflow-style: none; scrollbar-width: none; } .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(3px); z-index: 1049; opacity: 0; visibility: hidden; transition: all 0.3s ease; } .sidebar-overlay.show { opacity: 1; visibility: visible; } .sidebar-menu { position: fixed; top: 0; left: -300px; width: 280px; height: 100vh; background: #ffffff; box-shadow: 4px 0 25px rgba(0,0,0,0.15); z-index: 1050; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; overflow-y: auto; } .sidebar-menu.open { left: 0; } .menu-item { padding: 16px 24px; color: #475569; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: background 0.2s, color 0.2s; font-weight: 500; font-size: 1.05rem; } .menu-item i { font-size: 1.3rem; color: #94a3b8; } .menu-item:hover, .menu-item.active { background: #f8fafc; color: #4f46e5; } .menu-item:hover i, .menu-item.active i { color: #4f46e5; } @media (max-width: 767.98px) { .mobile-section { display: none; } .mobile-section.active { display: block; } }</style>`;
 
-  // 🔥 บัตรสมาชิกแนวนอน ขอบมน (แก้ไขบั๊กไอคอนทับชื่อแล้ว)
   const memberCardHtml = `
     <div class="card border-0 shadow-lg mb-4 position-relative overflow-hidden" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; border-radius: 20px; min-height: 200px;">
         <div class="position-absolute top-0 start-0 p-4" style="font-size: 12rem; line-height: 1; transform: translate(-20%, -30%); opacity: 0.08; z-index: 0;"><i class="bi bi-credit-card-2-front-fill"></i></div>
