@@ -26,8 +26,10 @@ function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
 
 document.addEventListener("DOMContentLoaded", () => {
   const page = window.location.pathname.split("/").pop() || "index.html";
+  // ระบบตั้งค่าปีลิขสิทธิ์อัตโนมัติ
   const yearSpan = document.getElementById("copyright-year");
   if (yearSpan) yearSpan.textContent = new Date().getFullYear();
+  
   if (page.includes("index.html")) handleLoginPage();
   else if (page.includes("register.html")) handleRegisterPage();
   else if (page.includes("dashboard.html")) handleDashboardPage();
@@ -44,7 +46,6 @@ function handleLoginPage() {
   const rememberedUser = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
   if (rememberedUser) { window.location.href = JSON.parse(rememberedUser).isAdmin ? "admin.html" : "dashboard.html"; return; }
 
-  // 1. Login แบบรหัสผ่าน
   const loginForm = document.getElementById("loginForm");
   if (loginForm) {
     loginForm.addEventListener("submit", (e) => {
@@ -58,7 +59,6 @@ function handleLoginPage() {
     });
   }
 
-  // 2. Login แบบ OTP
   const loginOtpForm = document.getElementById("loginOtpForm");
   if (loginOtpForm) {
       loginOtpForm.addEventListener("submit", (e) => {
@@ -92,7 +92,6 @@ function handleLoginPage() {
       });
   }
 
-  // 🔥 ลืมรหัสผ่าน (นำหน้าตาสวยงามแบบเดิมกลับมา)
   const forgotPasswordLink = document.getElementById("forgotPasswordLink");
   if (forgotPasswordLink) {
     forgotPasswordLink.addEventListener("click", (e) => {
@@ -161,8 +160,33 @@ function handleRegisterPage() {
   const registerForm = document.getElementById("registerForm");
   const registerBtn = document.getElementById("registerBtn");
   const policyCheckbox = document.getElementById("policyCheckbox");
+  // 🔥 อ่านปุ่มนโยบายความเป็นส่วนตัว
+  const viewPolicyLink = document.getElementById("viewPolicyLink"); 
 
   if (policyCheckbox) policyCheckbox.addEventListener("change", function () { registerBtn.disabled = !this.checked; });
+  
+  // 🔥 เด้งหน้าต่างสวยๆ ให้อ่านนโยบายเมื่อกดลิงก์
+  if (viewPolicyLink) {
+    viewPolicyLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      Swal.fire({
+        title: '<h4 class="fw-bold mb-0" style="color: #4f46e5;">นโยบายความเป็นส่วนตัว</h4>',
+        html: `
+        <div style="text-align: left; max-height: 350px; overflow-y: auto; padding: 15px;" class="small text-muted bg-light rounded-3 border mt-3">
+            <p><strong>1. การเก็บรวบรวมข้อมูลส่วนบุคคล</strong><br>ระบบจะเก็บข้อมูล ชื่อ-นามสกุล, เบอร์โทรศัพท์ และอีเมล เพื่อใช้สำหรับการยืนยันตัวตนและการใช้งานระบบสมาชิก</p>
+            <p><strong>2. การใช้งานข้อมูล</strong><br>ข้อมูลของท่านจะถูกใช้เพื่อการสะสมแต้ม, การแลกของรางวัล, และการส่งข้อความแจ้งเตือนที่เกี่ยวข้องกับระบบเท่านั้น</p>
+            <p class="mb-0"><strong>3. การรักษาความปลอดภัย</strong><br>เราให้ความสำคัญกับความปลอดภัยข้อมูลของท่าน และจะไม่มีการเปิดเผยข้อมูลแก่บุคคลที่สามโดยไม่ได้รับอนุญาต</p>
+        </div>`,
+        customClass: { popup: 'rounded-4' }, confirmButtonText: "เข้าใจและยอมรับ", confirmButtonColor: "#4f46e5"
+      }).then((result) => { 
+        if (result.isConfirmed) { 
+            if(policyCheckbox) policyCheckbox.checked = true; 
+            if(registerBtn) registerBtn.disabled = false; 
+        } 
+      });
+    });
+  }
+
   if (registerForm) {
     registerForm.addEventListener("submit", (e) => {
       e.preventDefault();
