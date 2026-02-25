@@ -21,6 +21,7 @@ function showLoading(title = "กำลังโหลด...") {
     },
   });
 }
+
 function apiCall(action, payload) {
   showLoading("กำลังประมวลผล...");
   return fetch(GAS_URL, {
@@ -29,21 +30,18 @@ function apiCall(action, payload) {
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({ action, payload }),
   })
-    .then((response) => response.json())
-    .then((result) => {
+    .then((res) => res.json())
+    .then((res) => {
       Swal.close();
-      if (result.status === "error") throw new Error(result.message);
-      return result.data;
+      if (res.status === "error") throw new Error(res.message);
+      return res.data;
     })
-    .catch((error) => {
-      Swal.fire({
-        icon: "error",
-        title: "เกิดข้อผิดพลาด",
-        text: error.message,
-      });
-      throw error;
+    .catch((err) => {
+      Swal.fire({ icon: "error", title: "เกิดข้อผิดพลาด", text: err.message });
+      throw err;
     });
 }
+
 function hashPassword(password) {
   return CryptoJS.SHA256(password).toString();
 }
@@ -58,36 +56,30 @@ document.addEventListener("DOMContentLoaded", () => {
   else if (page.includes("admin.html")) handleAdminPage();
 });
 
+// === Login Page (รหัสผ่าน & OTP) ===
 function handleLoginPage() {
-  if (MAINTENANCE_ENABLED) {
-    const now = new Date();
-    const reEnableTime = new Date(RE_ENABLE_DATETIME_STRING);
-    if (now < reEnableTime) {
-      const authCard = document.querySelector(".auth-card");
-      if (authCard) authCard.style.display = "none";
-      Swal.fire({
-        icon: "info",
-        title: "ปิดปรับปรุงระบบชั่วคราว",
-        text: `ระบบจะกลับมาให้บริการเวลาประมาณ ${reEnableTime.toLocaleTimeString(
-          "th-TH",
-          { hour: "2-digit", minute: "2-digit" }
-        )} น.`,
-        allowOutsideClick: false,
-        showConfirmButton: false,
-      });
-      return;
-    }
+  if (MAINTENANCE_ENABLED && new Date() < new Date(RE_ENABLE_DATETIME_STRING)) {
+    document.querySelector(".auth-card").style.display = "none";
+    Swal.fire({
+      icon: "info",
+      title: "ปิดปรับปรุงระบบชั่วคราว",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+    });
+    return;
   }
 
   const rememberedUser =
     localStorage.getItem("loggedInUser") ||
     sessionStorage.getItem("loggedInUser");
   if (rememberedUser) {
-    const user = JSON.parse(rememberedUser);
-    window.location.href = user.isAdmin ? "admin.html" : "dashboard.html";
+    window.location.href = JSON.parse(rememberedUser).isAdmin
+      ? "admin.html"
+      : "dashboard.html";
     return;
   }
 
+  // 1. Login แบบรหัสผ่าน
   const loginForm = document.getElementById("loginForm");
   if (loginForm) {
     loginForm.addEventListener("submit", (e) => {
@@ -112,140 +104,153 @@ function handleLoginPage() {
               : "dashboard.html";
           });
         })
-        .catch((err) => console.error(err));
+        .catch(console.error);
     });
   }
 
+  // 2. Login แบบ OTP
+  const loginOtpForm = document.getElementById("loginOtpForm");
+  if (loginOtpForm) {
+    loginOtpForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const identifier = document.getElementById("otpIdentifier").value;
+
+      apiCall("requestEmailOtp", { identifier }).then((otpResponse) => {
+        let timerInterval;
+        Swal.fire({
+          title: "ยืนยันรหัส OTP",
+          html: `<div class="text-start mt-2"><p class="text-muted small mb-2">รหัสส่งไปที่อีเมลแล้ว</p><p class="small fw-bold mb-3 text-info">Ref: ${otpResponse.refno}</p><input id="swal-input-otp-login" class="form-control text-center fs-4 py-2" placeholder="รหัส 6 หลัก" maxlength="6"><div id="otp-timer-login" class="mt-3 text-center small text-muted"></div></div>`,
+          showCancelButton: true,
+          confirmButtonText: "เข้าสู่ระบบ",
+          confirmButtonColor: "#0ea5e9",
+          preConfirm: () => {
+            const val = document.getElementById("swal-input-otp-login").value;
+            if (!val) Swal.showValidationMessage("กรุณากรอกรหัส OTP!");
+            return val;
+          },
+          didOpen: () => {
+            const timerEl = document.getElementById("otp-timer-login");
+            let timeLeft = 300;
+            timerInterval = setInterval(() => {
+              timeLeft--;
+              const m = Math.floor(timeLeft / 60)
+                .toString()
+                .padStart(2, "0");
+              const s = (timeLeft % 60).toString().padStart(2, "0");
+              timerEl.innerHTML = `หมดอายุใน ${m}:${s} นาที`;
+              if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timerEl.innerHTML = "รหัสหมดอายุแล้ว";
+              }
+            }, 1000);
+          },
+          willClose: () => clearInterval(timerInterval),
+        }).then((res) => {
+          if (res.isConfirmed && res.value) {
+            apiCall("verifyEmailOtp", {
+              identifier,
+              otp: res.value,
+              isForLogin: true,
+            }).then((data) => {
+              // เก็บแค่ Session ไม่ต้องจำรหัสผ่าน
+              sessionStorage.setItem("loggedInUser", JSON.stringify(data.user));
+              Swal.fire({
+                icon: "success",
+                title: "เข้าสู่ระบบสำเร็จ",
+                timer: 1500,
+                showConfirmButton: false,
+              }).then(() => {
+                window.location.href = data.user.isAdmin
+                  ? "admin.html"
+                  : "dashboard.html";
+              });
+            });
+          }
+        });
+      });
+    });
+  }
+
+  // ลืมรหัสผ่าน
   const forgotPasswordLink = document.getElementById("forgotPasswordLink");
   if (forgotPasswordLink) {
     forgotPasswordLink.addEventListener("click", (e) => {
       e.preventDefault();
-      async function startOtpProcess(identifier) {
-        try {
-          const otpResponse = await apiCall("requestEmailOtp", { identifier });
-          let timerInterval;
-          const { value: otp } = await Swal.fire({
-            title: "ยืนยันตัวตน",
-            html: `<div class="text-start mt-2"><p class="text-muted small mb-2">รหัส OTP ถูกส่งไปที่อีเมลของคุณแล้ว</p><p class="small fw-bold mb-3" style="color: #4f46e5;">รหัสอ้างอิง: ${
-              otpResponse.refno || ""
-            }</p><input id="swal-input-otp" class="form-control text-center fs-4 py-2 bg-light border-0" placeholder="รหัส 6 หลัก" maxlength="6" style="border-radius: 12px; letter-spacing: 5px;"><div id="otp-timer-container" class="mt-3 text-center small"><span id="otp-timer" class="text-muted">ขอรหัสใหม่ได้ในอีก <span class="fw-bold text-dark">05:00</span> นาที</span><a href="#" id="resend-otp-link" class="text-decoration-none fw-medium" style="display: none; color: #4f46e5;"><i class="bi bi-arrow-clockwise me-1"></i>ขอรหัสใหม่</a></div></div>`,
-            showCancelButton: true,
-            confirmButtonText: "ยืนยัน OTP",
-            confirmButtonColor: "#4f46e5",
-            customClass: { popup: "rounded-4" },
-            preConfirm: () => {
-              const val = document.getElementById("swal-input-otp").value;
-              if (!val) Swal.showValidationMessage("กรุณากรอกรหัส OTP!");
-              return val;
-            },
-            didOpen: () => {
-              const timerEl = document.getElementById("otp-timer");
-              const resendLink = document.getElementById("resend-otp-link");
-              let timeLeft = 300;
-              timerInterval = setInterval(() => {
-                timeLeft--;
-                const m = Math.floor(timeLeft / 60)
-                  .toString()
-                  .padStart(2, "0");
-                const s = (timeLeft % 60).toString().padStart(2, "0");
-                timerEl.innerHTML = `ขอรหัสใหม่ได้ในอีก <span class="fw-bold text-dark">${m}:${s}</span> นาที`;
-                if (timeLeft <= 0) {
-                  clearInterval(timerInterval);
-                  timerEl.style.display = "none";
-                  resendLink.style.display = "inline-block";
-                }
-              }, 1000);
-              resendLink.addEventListener("click", (e) => {
-                e.preventDefault();
-                clearInterval(timerInterval);
-                Swal.close();
-                startOtpProcess(identifier);
-              });
-            },
-            willClose: () => clearInterval(timerInterval),
-          });
-          if (!otp) return;
-          await apiCall("verifyEmailOtp", { identifier, otp });
-          const { value: newPassword } = await Swal.fire({
-            title: "ตั้งรหัสผ่านใหม่",
-            icon: "success",
-            html: `<input id="swal-input-new-pass" type="password" class="form-control py-2 bg-light border-0 mt-3" placeholder="ตั้งรหัสผ่านใหม่" style="border-radius: 12px;">`,
-            showCancelButton: true,
-            confirmButtonColor: "#10b981",
-            confirmButtonText: "บันทึกรหัสผ่าน",
-            customClass: { popup: "rounded-4" },
-            preConfirm: () => {
-              const val = document.getElementById("swal-input-new-pass").value;
-              if (!val) Swal.showValidationMessage("กรุณากรอกรหัสผ่านใหม่!");
-              return val;
-            },
-          });
-          if (newPassword) {
-            await apiCall("updatePassword", {
-              identifier,
-              newHashedPassword: hashPassword(newPassword),
-            });
-            Swal.fire({
-              title: "สำเร็จ!",
-              text: "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว",
-              icon: "success",
-              confirmButtonColor: "#4f46e5",
-              customClass: { popup: "rounded-4" },
-            });
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      }
       Swal.fire({
         title: "ลืมรหัสผ่าน",
-        html: `<div class="text-start mt-2"><p class="text-muted small mb-3">ระบบจะส่งรหัส OTP ไปยังอีเมลที่ผูกไว้กับบัญชีของคุณ</p><input id="swal-input-identifier" type="text" class="form-control py-2 bg-light border-0" placeholder="กรอกเบอร์โทรศัพท์ หรือ อีเมล" style="border-radius: 12px;"></div>`,
+        html: `<input id="swal-input-identifier" type="text" class="form-control" placeholder="เบอร์โทร หรือ อีเมล">`,
         showCancelButton: true,
-        confirmButtonText: "ขอรับรหัส OTP",
-        confirmButtonColor: "#4f46e5",
-        customClass: { popup: "rounded-4" },
+        confirmButtonText: "ขอ OTP",
         preConfirm: () => {
           const val = document.getElementById("swal-input-identifier").value;
           if (!val) Swal.showValidationMessage("กรุณากรอกข้อมูล!");
           return val;
         },
-      }).then((result) => {
-        if (result.isConfirmed && result.value) startOtpProcess(result.value);
+      }).then((res) => {
+        if (res.isConfirmed && res.value) {
+          apiCall("requestEmailOtp", { identifier: res.value }).then(
+            (otpResponse) => {
+              Swal.fire({
+                title: "ยืนยัน OTP (ลืมรหัส)",
+                html: `<input id="swal-input-otp" class="form-control text-center fs-4" placeholder="รหัส 6 หลัก" maxlength="6">`,
+                showCancelButton: true,
+                confirmButtonText: "ยืนยัน",
+                preConfirm: () => {
+                  const val = document.getElementById("swal-input-otp").value;
+                  if (!val) Swal.showValidationMessage("กรุณากรอกรหัส!");
+                  return val;
+                },
+              }).then((otpRes) => {
+                if (otpRes.isConfirmed && otpRes.value) {
+                  apiCall("verifyEmailOtp", {
+                    identifier: res.value,
+                    otp: otpRes.value,
+                  }).then(() => {
+                    Swal.fire({
+                      title: "ตั้งรหัสใหม่",
+                      html: `<input id="swal-new-pass" type="password" class="form-control" placeholder="รหัสผ่านใหม่">`,
+                      showCancelButton: true,
+                      confirmButtonText: "บันทึก",
+                      preConfirm: () => {
+                        const val =
+                          document.getElementById("swal-new-pass").value;
+                        if (!val) Swal.showValidationMessage("กรุณากรอกรหัส!");
+                        return val;
+                      },
+                    }).then((passRes) => {
+                      if (passRes.isConfirmed && passRes.value) {
+                        apiCall("updatePassword", {
+                          identifier: res.value,
+                          newHashedPassword: hashPassword(passRes.value),
+                        }).then(() =>
+                          Swal.fire("สำเร็จ", "เปลี่ยนรหัสแล้ว", "success")
+                        );
+                      }
+                    });
+                  });
+                }
+              });
+            }
+          );
+        }
       });
     });
   }
 }
 
+// === Register ===
 function handleRegisterPage() {
   const registerForm = document.getElementById("registerForm");
   const registerBtn = document.getElementById("registerBtn");
   const policyCheckbox = document.getElementById("policyCheckbox");
-  const viewPolicyLink = document.getElementById("viewPolicyLink");
 
   if (policyCheckbox)
     policyCheckbox.addEventListener("change", function () {
       registerBtn.disabled = !this.checked;
     });
-  if (viewPolicyLink) {
-    viewPolicyLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      Swal.fire({
-        html: `<div style="text-align: left; max-height: 400px; overflow-y: auto; padding: 0 0.5rem;"><h5 class="text-center mb-3 fw-bold" style="color: #4f46e5;">นโยบายความเป็นส่วนตัว</h5><p class="small">ข้อมูลเพื่อประกอบการใช้งานระบบสมาชิก...</p></div>`,
-        width: "90%",
-        customClass: { popup: "rounded-4" },
-        confirmButtonText: "เข้าใจและยอมรับ",
-        confirmButtonColor: "#4f46e5",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          if (policyCheckbox) policyCheckbox.checked = true;
-          if (registerBtn) registerBtn.disabled = false;
-        }
-      });
-    });
-  }
   if (registerForm) {
-    registerForm.addEventListener("submit", (event) => {
-      event.preventDefault();
+    registerForm.addEventListener("submit", (e) => {
+      e.preventDefault();
       const firstName = document.getElementById("firstName").value;
       const lastName = document.getElementById("lastName").value;
       const phone = document.getElementById("phone").value;
@@ -257,7 +262,6 @@ function handleRegisterPage() {
           title: "ข้อผิดพลาด",
           text: "รหัสผ่านไม่ตรงกัน",
           icon: "error",
-          customClass: { popup: "rounded-4" },
         });
         return;
       }
@@ -267,21 +271,19 @@ function handleRegisterPage() {
         phone,
         email,
         hashedPassword: hashPassword(password),
-      })
-        .then(() => {
-          Swal.fire({
-            icon: "success",
-            title: "สมัครสมาชิกสำเร็จ!",
-            timer: 2000,
-            showConfirmButton: false,
-            customClass: { popup: "rounded-4" },
-          }).then(() => (window.location.href = "index.html"));
-        })
-        .catch(console.error);
+      }).then(() => {
+        Swal.fire({
+          icon: "success",
+          title: "สมัครสมาชิกสำเร็จ!",
+          timer: 2000,
+          showConfirmButton: false,
+        }).then(() => (window.location.href = "index.html"));
+      });
     });
   }
 }
 
+// === Dashboard (ลูกค้า) ===
 function handleDashboardPage() {
   const rememberedUser =
     localStorage.getItem("loggedInUser") ||
@@ -313,41 +315,66 @@ function renderDashboard(user, notifications, rewards) {
     (acc[reward.category] = acc[reward.category] || []).push(reward);
     return acc;
   }, {});
+  const cleanPhone = user.phone.replace(/'/g, ""); // ล้างเครื่องหมาย '
 
-  let expiryMessageHtml = `<p class="mb-0 text-white-50 small"><i class="bi bi-info-circle me-1"></i> แต้มสะสมมีอายุ 1 ปี ตัดรอบหมดอายุทุก 31 ธ.ค. ของปีถัดไป</p>`;
+  let expiryMessageHtml = `<p class="mb-0 text-white-50 small"><i class="bi bi-info-circle me-1"></i> แต้มหมดอายุทุก 31 ธ.ค. ของปีถัดไป</p>`;
   if (user.expiringPoints > 0) {
-    expiryMessageHtml = `<div class="bg-white text-danger px-3 py-2 rounded-pill d-inline-block small fw-bold shadow-sm" style="animation: pulse 2s infinite;"><i class="bi bi-exclamation-triangle-fill me-1"></i> มีแต้มจำนวน ${user.expiringPoints} แต้ม จะหมดอายุใน ${user.expiryDate}</div>`;
+    expiryMessageHtml = `<div class="bg-white text-danger px-3 py-1 rounded-pill d-inline-block small fw-bold shadow-sm" style="animation: pulse 2s infinite;"><i class="bi bi-exclamation-triangle-fill me-1"></i> หมดอายุ ${user.expiringPoints} แต้ม ภายใน ${user.expiryDate}</div>`;
   }
 
-  const customStyles = `<style>body { background: linear-gradient(-45deg, #e0e7ff, #f8fafc, #ede9fe, #f1f5f9); background-size: 400% 400%; animation: gradientBG 15s ease infinite; } @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } } .swipe-container::-webkit-scrollbar { display: none; } .swipe-container { -ms-overflow-style: none; scrollbar-width: none; } .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(3px); z-index: 1049; opacity: 0; visibility: hidden; transition: all 0.3s ease; } .sidebar-overlay.show { opacity: 1; visibility: visible; } .sidebar-menu { position: fixed; top: 0; left: -300px; width: 280px; height: 100vh; background: #ffffff; box-shadow: 4px 0 25px rgba(0,0,0,0.15); z-index: 1050; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; overflow-y: auto; } .sidebar-menu.open { left: 0; } .menu-item { padding: 16px 24px; color: #475569; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: background 0.2s, color 0.2s; font-weight: 500; font-size: 1.05rem; } .menu-item i { font-size: 1.3rem; color: #94a3b8; transition: color 0.2s; } .menu-item:hover, .menu-item.active { background: #f8fafc; color: #4f46e5; } .menu-item:hover i, .menu-item.active i { color: #4f46e5; } .promo-card { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); color: white; border-radius: 20px; padding: 20px; position: relative; overflow: hidden; } .promo-card::after { content: '\\F3F6'; font-family: 'bootstrap-icons'; position: absolute; right: -10%; top: -20%; font-size: 8rem; opacity: 0.15; } @media (max-width: 767.98px) { .mobile-section { display: none; animation: fadeInTab 0.4s ease; } .mobile-section.active { display: block; } } @media (min-width: 768px) { .mobile-section { display: block !important; } } @keyframes fadeInTab { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }</style>`;
+  const customStyles = `<style>body { background: linear-gradient(-45deg, #e0e7ff, #f8fafc, #ede9fe, #f1f5f9); background-size: 400% 400%; animation: gradientBG 15s ease infinite; } @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } } .swipe-container::-webkit-scrollbar { display: none; } .swipe-container { -ms-overflow-style: none; scrollbar-width: none; } .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(3px); z-index: 1049; opacity: 0; visibility: hidden; transition: all 0.3s ease; } .sidebar-overlay.show { opacity: 1; visibility: visible; } .sidebar-menu { position: fixed; top: 0; left: -300px; width: 280px; height: 100vh; background: #ffffff; box-shadow: 4px 0 25px rgba(0,0,0,0.15); z-index: 1050; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; overflow-y: auto; } .sidebar-menu.open { left: 0; } .menu-item { padding: 16px 24px; color: #475569; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: background 0.2s, color 0.2s; font-weight: 500; font-size: 1.05rem; } .menu-item i { font-size: 1.3rem; color: #94a3b8; } .menu-item:hover, .menu-item.active { background: #f8fafc; color: #4f46e5; } .menu-item:hover i, .menu-item.active i { color: #4f46e5; } @media (max-width: 767.98px) { .mobile-section { display: none; } .mobile-section.active { display: block; } }</style>`;
 
+  // 🔥 บัตรสมาชิกแนวนอน ขอบมน (เอาลายน้ำออก ป้องกันสีขาวบังชื่อ)
+  const memberCardHtml = `
+    <div class="card border-0 shadow-lg mb-4 position-relative overflow-hidden" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; border-radius: 20px; min-height: 200px;">
+        
+        <div class="card-body p-4 position-relative d-flex justify-content-between align-items-center h-100">
+            
+            <div class="d-flex flex-column justify-content-center h-100" style="flex: 1; padding-right: 15px;">
+                <div>
+                    <h5 class="fw-bold mb-1 text-truncate" style="letter-spacing: 0.5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.2);">${user.firstName} ${user.lastName}</h5>
+                    <p class="mb-0 small" style="opacity: 0.85;"><i class="bi bi-telephone-fill me-1"></i>${cleanPhone}</p>
+                </div>
+                
+                <div class="mt-4 mb-2">
+                    <p class="mb-0 small" style="opacity: 0.85;">แต้มสะสม</p>
+                    <h1 class="display-3 fw-bold mb-0" style="letter-spacing: -2px; text-shadow: 2px 2px 5px rgba(0,0,0,0.3); line-height: 1;">${user.totalPoints}</h1>
+                </div>
+
+                <div>
+                     ${expiryMessageHtml}
+                </div>
+            </div>
+
+            <div class="bg-white p-2 rounded-4 shadow-sm flex-shrink-0 d-flex flex-column align-items-center justify-content-center" style="width: 120px; height: 140px;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${cleanPhone}" alt="QR" style="width: 100%; height: auto; display: block; border-radius: 8px;">
+                <span class="text-dark fw-bold mt-1" style="font-size: 0.65rem;">สแกนสะสมแต้ม</span>
+            </div>
+
+        </div>
+    </div>
+  `;
   app.innerHTML =
     customStyles +
     `
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
         <div class="sidebar-menu" id="sidebarMenu">
-            <div class="p-4 bg-light d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center"><div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;"><i class="bi bi-person-fill"></i></div><div><h6 class="mb-0 fw-bold text-dark text-truncate" style="max-width: 140px;">${
-                  user.firstName
-                }</h6><small class="text-muted">${
+            <div class="p-4 bg-light d-flex justify-content-between align-items-center"><div class="d-flex align-items-center"><div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;"><i class="bi bi-person-fill"></i></div><div><h6 class="mb-0 fw-bold text-dark text-truncate" style="max-width: 140px;">${
+              user.firstName
+            }</h6><small class="text-muted">${
       user.memberId
-    }</small></div></div><button type="button" class="btn-close" id="closeSidebarBtn"></button>
-            </div>
-            <div class="py-2 d-flex flex-column flex-grow-1">
-                <div class="small text-muted fw-bold px-4 py-2 mt-2">เมนูหลัก</div><div class="menu-item active" data-target="tab-home"><i class="bi bi-house-door-fill"></i> หน้าหลัก (คะแนน)</div><div class="menu-item" data-target="tab-rewards"><i class="bi bi-gift-fill"></i> แลกของรางวัล</div><div class="menu-item" data-target="tab-history"><i class="bi bi-receipt"></i> ประวัติรายการ</div><div class="small text-muted fw-bold px-4 py-2 mt-4">บัญชีของฉัน</div><div class="menu-item" id="menuMobileSettings"><i class="bi bi-gear-fill"></i> ตั้งค่าข้อมูลส่วนตัว</div><div class="menu-item text-danger mt-auto border-top" id="menuMobileLogout"><i class="bi bi-box-arrow-right text-danger"></i> ออกจากระบบ</div>
-            </div>
+    }</small></div></div><button type="button" class="btn-close" id="closeSidebarBtn"></button></div>
+            <div class="py-2 d-flex flex-column flex-grow-1"><div class="small text-muted fw-bold px-4 py-2 mt-2">เมนูหลัก</div><div class="menu-item active" data-target="tab-home"><i class="bi bi-house-door-fill"></i> หน้าหลัก (คะแนน)</div><div class="menu-item" data-target="tab-rewards"><i class="bi bi-gift-fill"></i> แลกของรางวัล</div><div class="menu-item" data-target="tab-history"><i class="bi bi-receipt"></i> ประวัติรายการ</div><div class="small text-muted fw-bold px-4 py-2 mt-4">บัญชีของฉัน</div><div class="menu-item" id="menuMobileSettings"><i class="bi bi-gear-fill"></i> ตั้งค่าข้อมูลส่วนตัว</div><div class="menu-item text-danger mt-auto border-top" id="menuMobileLogout"><i class="bi bi-box-arrow-right text-danger"></i> ออกจากระบบ</div></div>
         </div>
 
         <div class="container-fluid py-2" style="max-width: 1000px;">
             <header class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 p-md-4 rounded-4 shadow-sm" style="border: 1px solid rgba(0,0,0,0.05); background: rgba(255,255,255,0.85) !important; backdrop-filter: blur(10px);">
                 <div class="d-flex align-items-center"><button id="burgerBtn" class="btn btn-light rounded-circle shadow-sm me-3 d-md-none d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; color: #4f46e5;"><i class="bi bi-list fs-4"></i></button><div><h3 class="fw-bold mb-0 text-dark fs-5 fs-md-3">สวัสดี, ${
                   user.firstName
-                } 🌟</h3><p class="text-muted mb-0 small d-none d-md-block"><i class="bi bi-person-badge me-1"></i>รหัสสมาชิก: <span class="fw-semibold">${
-      user.memberId
-    }</span></p></div></div>
+                } 🌟</h3></div></div>
                 <div class="d-flex align-items-center">
                     <div class="desktop-controls d-none d-md-flex align-items-center"><div id="settingsBtnDesktop" class="me-3" style="cursor: pointer;" title="ตั้งค่าข้อมูลส่วนตัว"><div class="bg-light rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 45px; height: 45px; color: #64748b; font-size: 1.3rem;"><i class="bi bi-gear-fill"></i></div></div></div>
-                    <div id="notificationBellBtn" class="position-relative me-0 me-md-4" style="cursor: pointer;" title="การแจ้งเตือน"><div class="bg-light rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 45px; height: 45px; color: #4f46e5; font-size: 1.3rem;"><i class="bi bi-bell-fill"></i></div>${
+                    <div id="notificationBellBtn" class="position-relative me-0 me-md-4" style="cursor: pointer;"><div class="bg-light rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 45px; height: 45px; color: #4f46e5; font-size: 1.3rem;"><i class="bi bi-bell-fill"></i></div>${
                       notifications.length > 0
                         ? `<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm border border-white" style="font-size: 0.75rem;">${notifications.length}</span>`
                         : ""
@@ -358,106 +385,72 @@ function renderDashboard(user, notifications, rewards) {
 
             <main class="main-content-wrapper">
                 <div id="tab-home" class="mobile-section active">
-                    <div class="card border-0 rounded-4 shadow-lg mb-4 position-relative overflow-hidden" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white;">
-                        <div class="position-absolute top-0 end-0 opacity-25 p-4" style="font-size: 10rem; line-height: 1; transform: translate(20%, -20%);"><i class="bi bi-suit-diamond-fill"></i></div>
-                        <div class="card-body p-4 p-md-5 text-center position-relative z-1">
-                            <h5 class="opacity-75 mb-2 fw-light">แต้มสะสมทั้งหมดของคุณ</h5>
-                            <h1 class="display-1 fw-bold mb-0 text-white" style="letter-spacing: -2px; text-shadow: 2px 2px 10px rgba(0,0,0,0.2);">${
-                              user.totalPoints
-                            }</h1><p class="opacity-75 mt-1 mb-4 fs-5">คะแนน</p>
-                            <div class="bg-white p-3 rounded-4 d-inline-block shadow-sm mb-4">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${
-                                  user.phone
-                                }" alt="QR Code เบอร์โทร" style="width: 130px; height: 130px; display: block; margin: 0 auto;">
-                                <p class="text-muted small mt-2 mb-0 fw-bold" style="letter-spacing: 1px;">สแกนเพื่อสะสมแต้ม</p>
-                            </div>
-                            <div class="mt-2 pt-3 border-top border-light border-opacity-25">${expiryMessageHtml}</div>
-                        </div>
-                    </div>
+                    ${memberCardHtml}
+
                     <div class="row g-3 mb-4">
-                        <div class="col-12 col-md-6"><div class="promo-card shadow-sm h-100 cursor-pointer"><h5 class="fw-bold mb-1"><i class="bi bi-stars me-2"></i>สิทธิพิเศษสำหรับคุณ</h5><p class="small opacity-75 mb-0">สะสมแต้มครบ รับของรางวัลสุดคุ้มทันที เลื่อนดูเลยที่เมนูของรางวัล!</p></div></div>
-                        <div class="col-12 col-md-6"><div class="card border-0 rounded-4 shadow-sm h-100 bg-white p-2 text-center d-flex flex-row justify-content-around align-items-center"><div class="p-2 cursor-pointer" onclick="document.querySelector('.menu-item[data-target=tab-rewards]').click()"><div class="bg-light text-success rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 50px; height: 50px;"><i class="bi bi-gift fs-4"></i></div><span class="small fw-medium text-dark">แลกรางวัล</span></div><div class="p-2 cursor-pointer" onclick="document.getElementById('notificationBellBtn').click()"><div class="bg-light text-info rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 50px; height: 50px;"><i class="bi bi-newspaper fs-4"></i></div><span class="small fw-medium text-dark">ข่าวสาร</span></div><div class="p-2 cursor-pointer" onclick="window.open('https://line.me/R/ti/p/@732fqlwh', '_blank')"><div class="bg-light text-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 50px; height: 50px;"><i class="bi bi-headset fs-4"></i></div><span class="small fw-medium text-dark">ติดต่อเรา</span></div></div></div>
+                        <div class="col-12"><div class="card border-0 rounded-4 shadow-sm bg-white p-2 text-center d-flex flex-row justify-content-around align-items-center"><div class="p-2 cursor-pointer" onclick="document.querySelector('.menu-item[data-target=tab-rewards]').click()"><div class="bg-light text-success rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 50px; height: 50px;"><i class="bi bi-gift fs-4"></i></div><span class="small fw-medium text-dark">แลกรางวัล</span></div><div class="p-2 cursor-pointer" onclick="document.getElementById('notificationBellBtn').click()"><div class="bg-light text-info rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 50px; height: 50px;"><i class="bi bi-newspaper fs-4"></i></div><span class="small fw-medium text-dark">ข่าวสาร</span></div><div class="p-2 cursor-pointer" onclick="window.open('https://line.me/R/ti/p/@732fqlwh', '_blank')"><div class="bg-light text-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 50px; height: 50px;"><i class="bi bi-headset fs-4"></i></div><span class="small fw-medium text-dark">ติดต่อแอดมิน</span></div></div></div>
                     </div>
                 </div>
 
-                <div class="row g-4">
-                    <div class="col-lg-7 col-xl-8"><div id="tab-rewards" class="mobile-section"><div class="card border-0 rounded-4 shadow-sm h-100 bg-white"><div class="card-header bg-transparent border-0 pt-4 px-4 pb-0"><h5 class="fw-bold text-dark mb-0"><i class="bi bi-gift-fill text-success me-2"></i>แลกของรางวัล</h5></div><div class="card-body p-0 pt-2 pb-4 overflow-hidden">
-                        ${
-                          Object.keys(rewardsByCategory).length > 0
-                            ? Object.keys(rewardsByCategory)
-                                .map(
-                                  (category) =>
-                                    `<div class="d-flex justify-content-between align-items-end mt-4 mb-3 px-4"><h6 class="text-primary fw-bold mb-0">${category}</h6><small class="text-muted d-md-none" style="font-size: 0.75rem;"><i class="bi bi-arrows-collapse me-1"></i>ปัดซ้าย-ขวา</small></div><div class="d-flex flex-nowrap overflow-x-auto gap-3 px-4 pb-3 swipe-container" style="-webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory;">${rewardsByCategory[
-                                      category
-                                    ]
-                                      .map((reward) => {
-                                        const cashText =
-                                          reward.cashRequired > 0
-                                            ? ` + ${reward.cashRequired}฿`
-                                            : "";
-                                        return `<div class="card h-100 border rounded-4 shadow-sm flex-shrink-0" style="width: 250px; border-color: #f1f5f9 !important; scroll-snap-align: start;"><div class="card-body p-3 d-flex flex-column"><div class="d-flex justify-content-between align-items-start mb-2"><h6 class="mb-0 fw-bold text-dark text-truncate pe-2" style="max-width: 80%;">${
-                                          reward.name
-                                        }</h6>${
-                                          String(reward.isNew).toUpperCase() ===
-                                          "TRUE"
-                                            ? '<span class="badge bg-danger rounded-pill" style="font-size: 0.65rem;">ใหม่</span>'
-                                            : ""
-                                        }</div><p class="small text-muted mb-3 flex-grow-1" style="font-size: 0.8rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${
-                                          reward.description
-                                        }</p><button class="btn btn-sm w-100 rounded-pill fw-medium redeem-btn shadow-sm mt-auto" data-reward-id="${
-                                          reward.rewardId
-                                        }" data-reward-name="${reward.name}" ${
-                                          user.totalPoints <
-                                          reward.pointsRequired
-                                            ? "disabled"
-                                            : ""
-                                        } style="${
-                                          user.totalPoints >=
-                                          reward.pointsRequired
-                                            ? "background: #10b981; border: none; color: white;"
-                                            : "background: #e2e8f0; border: none; color: #94a3b8;"
-                                        }"><i class="bi bi-award-fill me-1"></i> แลก ${
-                                          reward.pointsRequired
-                                        } แต้ม${cashText}</button></div></div>`;
-                                      })
-                                      .join("")}</div>`
-                                )
-                                .join("")
-                            : '<div class="text-center p-5"><i class="bi bi-box2-heart text-muted display-1 d-block mb-3 opacity-25"></i><p class="text-muted fw-medium">ยังไม่มีของรางวัลให้แลกในขณะนี้</p></div>'
-                        }
-                    </div></div></div></div>
-
-                    <div class="col-lg-5 col-xl-4"><div id="tab-history" class="mobile-section"><div class="card border-0 rounded-4 shadow-sm h-100 bg-white"><div class="card-header bg-transparent border-0 pt-4 px-4 pb-0"><h5 class="fw-bold mb-0"><i class="bi bi-clock-history text-warning me-2"></i>ประวัติรายการ</h5></div><div class="card-body p-0 mt-3" style="max-height: 450px; overflow-y: auto;">
-                        <ul class="list-group list-group-flush px-3 pb-3">
-                            ${
-                              user.pointsHistory.length > 0
-                                ? user.pointsHistory
-                                    .map(
-                                      (log) =>
-                                        `<li class="list-group-item d-flex justify-content-between align-items-center px-2 py-3 border-bottom" style="border-color: #f1f5f9 !important;"><div><strong class="text-dark d-block mb-1" style="font-size: 0.9rem;">${
-                                          log.reason
-                                        }</strong><small class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i>${new Date(
-                                          log.timestamp
-                                        ).toLocaleString(
-                                          "th-TH"
-                                        )}</small></div><span class="badge bg-${
-                                          log.pointsChange > 0
-                                            ? "success"
-                                            : "danger"
-                                        } bg-opacity-10 text-${
-                                          log.pointsChange > 0
-                                            ? "success"
-                                            : "danger"
-                                        } rounded-pill px-3 py-2 fs-6 fw-bold">${
-                                          log.pointsChange > 0 ? "+" : ""
-                                        }${log.pointsChange}</span></li>`
-                                    )
-                                    .join("")
-                                : '<div class="text-center p-5"><i class="bi bi-inbox text-muted display-3 d-block mb-3 opacity-25"></i><span class="text-muted">ยังไม่มีประวัติการใช้งาน</span></div>'
-                            }
-                        </ul>
-                    </div></div></div></div>
-                </div>
+                <div class="row g-4"><div class="col-lg-7 col-xl-8"><div id="tab-rewards" class="mobile-section"><div class="card border-0 rounded-4 shadow-sm h-100 bg-white"><div class="card-header bg-transparent border-0 pt-4 px-4 pb-0"><h5 class="fw-bold text-dark mb-0"><i class="bi bi-gift-fill text-success me-2"></i>แลกของรางวัล</h5></div><div class="card-body p-0 pt-2 pb-4 overflow-hidden">${
+                  Object.keys(rewardsByCategory).length > 0
+                    ? Object.keys(rewardsByCategory)
+                        .map(
+                          (category) =>
+                            `<div class="d-flex justify-content-between align-items-end mt-4 mb-3 px-4"><h6 class="text-primary fw-bold mb-0">${category}</h6></div><div class="d-flex flex-nowrap overflow-x-auto gap-3 px-4 pb-3 swipe-container" style="-webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory;">${rewardsByCategory[
+                              category
+                            ]
+                              .map((reward) => {
+                                const cashText =
+                                  reward.cashRequired > 0
+                                    ? ` + ${reward.cashRequired}฿`
+                                    : "";
+                                return `<div class="card h-100 border rounded-4 shadow-sm flex-shrink-0" style="width: 250px; border-color: #f1f5f9 !important; scroll-snap-align: start;"><div class="card-body p-3 d-flex flex-column"><div class="d-flex justify-content-between align-items-start mb-2"><h6 class="mb-0 fw-bold text-dark text-truncate pe-2" style="max-width: 80%;">${
+                                  reward.name
+                                }</h6>${
+                                  String(reward.isNew).toUpperCase() === "TRUE"
+                                    ? '<span class="badge bg-danger rounded-pill" style="font-size: 0.65rem;">ใหม่</span>'
+                                    : ""
+                                }</div><p class="small text-muted mb-3 flex-grow-1" style="font-size: 0.8rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${
+                                  reward.description
+                                }</p><button class="btn btn-sm w-100 rounded-pill fw-medium redeem-btn shadow-sm mt-auto" data-reward-id="${
+                                  reward.rewardId
+                                }" data-reward-name="${reward.name}" ${
+                                  user.totalPoints < reward.pointsRequired
+                                    ? "disabled"
+                                    : ""
+                                } style="${
+                                  user.totalPoints >= reward.pointsRequired
+                                    ? "background: #10b981; border: none; color: white;"
+                                    : "background: #e2e8f0; border: none; color: #94a3b8;"
+                                }"><i class="bi bi-award-fill me-1"></i> แลก ${
+                                  reward.pointsRequired
+                                } แต้ม${cashText}</button></div></div>`;
+                              })
+                              .join("")}</div>`
+                        )
+                        .join("")
+                    : '<div class="text-center p-5"><p class="text-muted fw-medium">ยังไม่มีของรางวัลในขณะนี้</p></div>'
+                }</div></div></div></div><div class="col-lg-5 col-xl-4"><div id="tab-history" class="mobile-section"><div class="card border-0 rounded-4 shadow-sm h-100 bg-white"><div class="card-header bg-transparent border-0 pt-4 px-4 pb-0"><h5 class="fw-bold mb-0"><i class="bi bi-clock-history text-warning me-2"></i>ประวัติรายการ</h5></div><div class="card-body p-0 mt-3" style="max-height: 450px; overflow-y: auto;"><ul class="list-group list-group-flush px-3 pb-3">${
+      user.pointsHistory.length > 0
+        ? user.pointsHistory
+            .map(
+              (log) =>
+                `<li class="list-group-item d-flex justify-content-between align-items-center px-2 py-3 border-bottom" style="border-color: #f1f5f9 !important;"><div><strong class="text-dark d-block mb-1" style="font-size: 0.9rem;">${
+                  log.reason
+                }</strong><small class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i>${new Date(
+                  log.timestamp
+                ).toLocaleString("th-TH")}</small></div><span class="badge bg-${
+                  log.pointsChange > 0 ? "success" : "danger"
+                } bg-opacity-10 text-${
+                  log.pointsChange > 0 ? "success" : "danger"
+                } rounded-pill px-3 py-2 fs-6 fw-bold">${
+                  log.pointsChange > 0 ? "+" : ""
+                }${log.pointsChange}</span></li>`
+            )
+            .join("")
+        : '<div class="text-center p-5"><span class="text-muted">ยังไม่มีประวัติการใช้งาน</span></div>'
+    }</ul></div></div></div></div></div>
             </main>
         </div>
     `;
@@ -514,9 +507,7 @@ function renderDashboard(user, notifications, rewards) {
         user.firstName
       } ${
         user.lastName
-      }</div></div><div class="mb-3"><label class="small text-muted fw-bold mb-1">เบอร์โทรศัพท์ (ใช้เข้าระบบ)</label><div class="text-dark fs-6 bg-white p-2 px-3 rounded shadow-sm border" style="border-color: #e2e8f0 !important;">${
-        user.phone
-      }</div><div class="text-danger small mt-2 fw-medium"><i class="bi bi-info-circle-fill me-1"></i>หากต้องการเปลี่ยนเบอร์มือถือ กรุณาติดต่อแอดมินคะ</div></div><div class="mb-2"><label class="small text-muted fw-bold mb-1">อีเมลติดต่อ</label><div class="d-flex justify-content-between align-items-center bg-white p-2 px-3 rounded shadow-sm border" style="border-color: #e2e8f0 !important;"><span class="text-dark fs-6 text-truncate pe-2">${
+      }</div></div><div class="mb-3"><label class="small text-muted fw-bold mb-1">เบอร์โทรศัพท์ (ใช้เข้าระบบ)</label><div class="text-dark fs-6 bg-white p-2 px-3 rounded shadow-sm border" style="border-color: #e2e8f0 !important;">${cleanPhone}</div><div class="text-danger small mt-2 fw-medium"><i class="bi bi-info-circle-fill me-1"></i>หากต้องการเปลี่ยนเบอร์มือถือ กรุณาติดต่อแอดมินคะ</div></div><div class="mb-2"><label class="small text-muted fw-bold mb-1">อีเมลติดต่อ</label><div class="d-flex justify-content-between align-items-center bg-white p-2 px-3 rounded shadow-sm border" style="border-color: #e2e8f0 !important;"><span class="text-dark fs-6 text-truncate pe-2">${
         user.email ||
         '<span class="text-warning small"><i class="bi bi-exclamation-triangle me-1"></i>ยังไม่ระบุ</span>'
       }</span><button id="swalEditEmailBtn" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-medium flex-shrink-0"><i class="bi bi-pencil me-1"></i>แก้ไข</button></div></div></div>`,
@@ -552,7 +543,7 @@ function renderDashboard(user, notifications, rewards) {
                     "error"
                   );
                 apiCall("updateEmail", {
-                  phone: user.phone,
+                  phone: cleanPhone,
                   newEmail,
                   hashedPassword: hashPassword(pass),
                 })
@@ -584,12 +575,12 @@ function renderDashboard(user, notifications, rewards) {
     let nHtml = '<div class="text-start mt-2">';
     if (notifications.length === 0) {
       nHtml +=
-        '<div class="text-center py-5"><i class="bi bi-bell-slash display-4 text-muted opacity-25 mb-3 d-block"></i><p class="text-muted fw-medium">ไม่มีการแจ้งเตือนใหม่</p></div>';
+        '<div class="text-center py-5"><p class="text-muted fw-medium">ไม่มีการแจ้งเตือนใหม่</p></div>';
     } else {
       nHtml +=
         '<ul class="list-group list-group-flush mb-4" style="max-height: 350px; overflow-y: auto;">';
       notifications.forEach((n) => {
-        nHtml += `<li class="list-group-item px-1 py-3 border-bottom"><strong class="text-primary d-block mb-1" style="font-size:0.85rem;"><i class="bi bi-calendar2-event me-1"></i>${new Date(
+        nHtml += `<li class="list-group-item px-1 py-3 border-bottom"><strong class="text-primary d-block mb-1" style="font-size:0.85rem;">${new Date(
           n.timestamp
         ).toLocaleDateString("th-TH")}</strong><span class="text-dark small">${
           n.message
@@ -597,7 +588,7 @@ function renderDashboard(user, notifications, rewards) {
       });
       nHtml += "</ul>";
     }
-    nHtml += `<a href="https://line.me/R/ti/p/@732fqlwh" target="_blank" class="btn btn-success w-100 rounded-pill fw-bold shadow-sm py-2"><i class="bi bi-line me-2"></i>ติดต่อแอดมิน</a></div>`;
+    nHtml += `<a href="https://line.me/R/ti/p/@732fqlwh" target="_blank" class="btn btn-success w-100 rounded-pill fw-bold shadow-sm py-2">ติดต่อแอดมิน</a></div>`;
     Swal.fire({
       title:
         '<h5 class="fw-bold mb-0 text-start" style="color:#1e293b;">การแจ้งเตือน</h5>',
@@ -605,7 +596,6 @@ function renderDashboard(user, notifications, rewards) {
       width: 450,
       showConfirmButton: false,
       showCloseButton: true,
-      customClass: { popup: "rounded-4" },
     });
   };
   document
@@ -618,37 +608,30 @@ function renderDashboard(user, notifications, rewards) {
       const rewardName = this.dataset.rewardName;
       Swal.fire({
         title: "ยืนยันการแลกรางวัล?",
-        text: `คุณต้องการแลก "${rewardName}" ใช่หรือไม่? แต้มของคุณจะถูกหักทันที`,
+        text: `คุณต้องการแลก "${rewardName}" ใช่หรือไม่?`,
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#10b981",
-        cancelButtonColor: "#ef4444",
         confirmButtonText: "ยืนยันการแลก",
-        cancelButtonText: "ยกเลิก",
-        customClass: { popup: "rounded-4" },
       }).then((result) => {
         if (result.isConfirmed) {
           apiCall("redeemReward", {
-            memberPhone: user.phone,
+            memberPhone: cleanPhone,
             rewardId: rewardId,
-          })
-            .then(() => {
-              Swal.fire({
-                icon: "success",
-                title: "แลกของรางวัลสำเร็จ!",
-                html: `<p class="mb-3">คุณได้แลก <b class="text-success fs-5">${rewardName}</b> เรียบร้อยแล้ว</p><div class="alert alert-danger rounded-3" role="alert"><strong><i class="bi bi-camera me-1"></i>กรุณาแคปหน้าจอนี้ไว้เป็นหลักฐาน</strong></div><p class="small text-muted">ติดต่อแอดมินเพื่อรับรางวัลที่:</p><a href="https://line.me/R/ti/p/@732fqlwh" target="_blank" class="btn btn-success rounded-pill px-4 fw-medium shadow-sm"><i class="bi bi-line me-2"></i>ส่งหลักฐานทาง LINE</a>`,
-                confirmButtonText: "ปิดหน้าต่าง",
-                customClass: { popup: "rounded-4" },
-              }).then(() => location.reload());
-            })
-            .catch(console.error);
+          }).then(() => {
+            Swal.fire(
+              "สำเร็จ",
+              "แลกของรางวัลสำเร็จ กรุณาแคปหน้าจอติดต่อแอดมิน",
+              "success"
+            ).then(() => location.reload());
+          });
         }
       });
     });
   });
 }
 
-// === หน้า Admin (แก้ไขเพิ่มการแจ้งเตือนแต้มหมดอายุ) ===
+// === หน้า Admin ===
 function handleAdminPage() {
   const rememberedUser =
     localStorage.getItem("loggedInUser") ||
@@ -765,9 +748,9 @@ function renderAdminPage(adminUser) {
 
     apiCall("searchUser", { phone })
       .then((user) => {
-        currentCustomerPhone = user.phone;
+        const cleanAdminPhone = user.phone.replace(/'/g, "");
+        currentCustomerPhone = cleanAdminPhone;
 
-        // 🔥 ส่วนที่เพิ่มใหม่: กรอบแดงแจ้งเตือนถ้ามีแต้มจะหมดอายุ (โชว์ให้แอดมินเห็น)
         let adminExpiryWarning = "";
         if (user.expiringPoints > 0) {
           adminExpiryWarning = `
@@ -788,9 +771,7 @@ function renderAdminPage(adminUser) {
           user.lastName
         }</h6>
                         <div class="d-flex align-items-center text-muted small">
-                            <i class="bi bi-telephone-fill me-1"></i> <span id="displayPhone">${
-                              user.phone
-                            }</span>
+                            <i class="bi bi-telephone-fill me-1"></i> <span id="displayPhone">${cleanAdminPhone}</span>
                             <button id="adminEditPhoneBtn" class="btn btn-sm btn-link p-0 ms-2 text-primary" title="แก้ไขเบอร์โทรและย้ายข้อมูล"><i class="bi bi-pencil-square"></i></button>
                         </div>
                     </div>
@@ -828,13 +809,12 @@ function renderAdminPage(adminUser) {
         `;
         document.getElementById("customerActions").classList.remove("d-none");
 
-        // Event ปุ่มส่งแจ้งเตือนหมดอายุด่วน
         const notifyBtn = document.getElementById("notifyExpiryBtn");
         if (notifyBtn) {
           notifyBtn.addEventListener("click", () => {
             Swal.fire({
               title: "ส่งแจ้งเตือนแต้มหมดอายุ?",
-              text: `ระบบจะส่งข้อความเตือนไปยังกล่องแจ้งเตือนของลูกค้าเบอร์ ${user.phone} ทันที`,
+              text: `ระบบจะส่งข้อความเตือนไปยังกล่องแจ้งเตือนของลูกค้าเบอร์ ${cleanAdminPhone} ทันที`,
               icon: "question",
               showCancelButton: true,
               confirmButtonText: "ส่งข้อความ",
@@ -845,7 +825,7 @@ function renderAdminPage(adminUser) {
                 const msg = `📢 แจ้งเตือนจากร้านค้า: คุณมีแต้มสะสมจำนวน ${user.expiringPoints} คะแนน ที่กำลังจะหมดอายุในวันที่ ${user.expiryDate} นี้ อย่าลืมเข้ามาแลกของรางวัลกันนะคะ!`;
                 apiCall("sendNotification", {
                   message: msg,
-                  targetUser: user.phone,
+                  targetUser: cleanAdminPhone,
                   adminPhone: adminUser.phone,
                 }).then(() => {
                   Swal.fire(
@@ -865,7 +845,7 @@ function renderAdminPage(adminUser) {
             const { value: newPhone } = await Swal.fire({
               title: "แก้ไขเบอร์โทรศัพท์",
               input: "text",
-              inputValue: user.phone,
+              inputValue: cleanAdminPhone,
               html: '<p class="small text-danger"><b>คำเตือน:</b> การเปลี่ยนเบอร์ ระบบจะย้ายประวัติแต้มทั้งหมดไปที่เบอร์ใหม่ให้โดยอัตโนมัติ</p>',
               showCancelButton: true,
               confirmButtonText: "บันทึกการเปลี่ยนแปลง",
@@ -874,9 +854,9 @@ function renderAdminPage(adminUser) {
                 if (!val) return "กรุณากรอกเบอร์โทรศัพท์ใหม่";
               },
             });
-            if (newPhone && newPhone !== user.phone) {
+            if (newPhone && newPhone !== cleanAdminPhone) {
               apiCall("adminUpdatePhone", {
-                oldPhone: currentCustomerPhone,
+                oldPhone: cleanAdminPhone,
                 newPhone: newPhone,
               }).then((res) => {
                 Swal.fire("สำเร็จ", res.message, "success");
@@ -899,7 +879,7 @@ function renderAdminPage(adminUser) {
             });
             if (newEmail) {
               apiCall("adminUpdateEmail", {
-                memberPhone: currentCustomerPhone,
+                memberPhone: cleanAdminPhone,
                 newEmail,
               }).then((res) => {
                 Swal.fire("สำเร็จ", res.message, "success");
@@ -915,7 +895,7 @@ function renderAdminPage(adminUser) {
               user.accountStatus === "SUSPENDED" ? "เปิดใช้งาน" : "ระงับ";
             Swal.fire({
               title: `ยืนยันการ${actionText}บัญชี?`,
-              text: `แน่ใจหรือไม่ที่จะ${actionText}บัญชีลูกค้าเบอร์ ${currentCustomerPhone}?`,
+              text: `แน่ใจหรือไม่ที่จะ${actionText}บัญชีลูกค้าเบอร์ ${cleanAdminPhone}?`,
               icon: "warning",
               showCancelButton: true,
               confirmButtonColor:
@@ -924,7 +904,7 @@ function renderAdminPage(adminUser) {
             }).then((res) => {
               if (res.isConfirmed)
                 apiCall("toggleAccountStatus", {
-                  memberPhone: currentCustomerPhone,
+                  memberPhone: cleanAdminPhone,
                 }).then((data) => {
                   Swal.fire("สำเร็จ!", data.message, "success");
                   searchAction();
