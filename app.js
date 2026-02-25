@@ -25,21 +25,15 @@ function apiCall(action, payload) {
 function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // 🔥 แก้ไขระบบตรวจสอบหน้าเว็บให้รองรับ Netlify
-  const path = window.location.pathname.toLowerCase();
-  
+  const page = window.location.pathname.split("/").pop() || "index.html";
+  // ระบบตั้งค่าปีลิขสิทธิ์อัตโนมัติ
   const yearSpan = document.getElementById("copyright-year");
   if (yearSpan) yearSpan.textContent = new Date().getFullYear();
   
-  if (path.includes("register")) {
-      handleRegisterPage();
-  } else if (path.includes("dashboard")) {
-      handleDashboardPage();
-  } else if (path.includes("admin")) {
-      handleAdminPage();
-  } else {
-      handleLoginPage();
-  }
+  if (page.includes("index.html")) handleLoginPage();
+  else if (page.includes("register.html")) handleRegisterPage();
+  else if (page.includes("dashboard.html")) handleDashboardPage();
+  else if (page.includes("admin.html")) handleAdminPage();
 });
 
 // === Login Page (รหัสผ่าน & OTP) ===
@@ -161,15 +155,17 @@ function handleLoginPage() {
   }
 }
 
-// === Register (นโยบายความเป็นส่วนตัว) ===
+// === Register ===
 function handleRegisterPage() {
   const registerForm = document.getElementById("registerForm");
   const registerBtn = document.getElementById("registerBtn");
   const policyCheckbox = document.getElementById("policyCheckbox");
+  // 🔥 อ่านปุ่มนโยบายความเป็นส่วนตัว
   const viewPolicyLink = document.getElementById("viewPolicyLink"); 
 
   if (policyCheckbox) policyCheckbox.addEventListener("change", function () { registerBtn.disabled = !this.checked; });
   
+  // 🔥 เด้งหน้าต่างสวยๆ ให้อ่านนโยบายเมื่อกดลิงก์
   if (viewPolicyLink) {
     viewPolicyLink.addEventListener("click", (e) => {
       e.preventDefault();
