@@ -25,7 +25,6 @@ function apiCall(action, payload) {
 function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // 🔥 แก้ไขระบบตรวจสอบหน้าเว็บให้รองรับ Netlify
   const path = window.location.pathname.toLowerCase();
   
   const yearSpan = document.getElementById("copyright-year");
@@ -42,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// === Login Page (รหัสผ่าน & OTP) ===
+// === Login Page ===
 function handleLoginPage() {
   if (MAINTENANCE_ENABLED && new Date() < new Date(RE_ENABLE_DATETIME_STRING)) {
       document.querySelector(".auth-card").style.display = "none";
@@ -161,7 +160,7 @@ function handleLoginPage() {
   }
 }
 
-// === Register (นโยบายความเป็นส่วนตัว) ===
+// === Register ===
 function handleRegisterPage() {
   const registerForm = document.getElementById("registerForm");
   const registerBtn = document.getElementById("registerBtn");
@@ -218,7 +217,6 @@ function renderDashboard(user, notifications, rewards) {
   const app = document.getElementById("app");
   const rewardsByCategory = rewards.reduce((acc, reward) => { (acc[reward.category] = acc[reward.category] || []).push(reward); return acc; }, {});
   
-  // 🔥 บังคับแสดงหมวดหมู่ "โปรประจำสัปดาห์" แม้ไม่มีของ เพื่อให้แสดงคำว่า เร็วๆ นี้
   if (!rewardsByCategory["โปรประจำสัปดาห์"]) {
       rewardsByCategory["โปรประจำสัปดาห์"] = [{ isPlaceholder: true, name: "⏳ โปรเด็ด เร็วๆ นี้!", description: "รอติดตามโปรโมชั่นสุดคุ้มประจำวันได้ที่นี่ แวะมาเช็คบ่อยๆ นะคะ" }];
   } else if (rewardsByCategory["โปรประจำสัปดาห์"].length === 0) {
@@ -237,21 +235,12 @@ function renderDashboard(user, notifications, rewards) {
   const memberCardHtml = `
     <div class="card border-0 shadow-lg mb-4 position-relative overflow-hidden" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; border-radius: 20px; min-height: 200px;">
         <div class="position-absolute top-0 start-0 p-4" style="font-size: 12rem; line-height: 1; transform: translate(-20%, -30%); opacity: 0.08; z-index: 0;"><i class="bi bi-credit-card-2-front-fill"></i></div>
-        
         <div class="card-body p-4 position-relative d-flex justify-content-between align-items-center h-100" style="z-index: 1;">
             <div class="d-flex flex-column justify-content-center h-100" style="flex: 1; padding-right: 15px;">
-                <div>
-                    <h5 class="fw-bold mb-1 text-truncate" style="letter-spacing: 0.5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.2);">${user.firstName} ${user.lastName}</h5>
-                    <p class="mb-0 small" style="opacity: 0.85;"><i class="bi bi-telephone-fill me-1"></i>${cleanPhone}</p>
-                </div>
-                
-                <div class="mt-4 mb-2">
-                    <p class="mb-0 small" style="opacity: 0.85;">แต้มสะสม</p>
-                    <h1 class="display-3 fw-bold mb-0" style="letter-spacing: -2px; text-shadow: 2px 2px 5px rgba(0,0,0,0.3); line-height: 1;">${user.totalPoints}</h1>
-                </div>
+                <div><h5 class="fw-bold mb-1 text-truncate" style="letter-spacing: 0.5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.2);">${user.firstName} ${user.lastName}</h5><p class="mb-0 small" style="opacity: 0.85;"><i class="bi bi-telephone-fill me-1"></i>${cleanPhone}</p></div>
+                <div class="mt-4 mb-2"><p class="mb-0 small" style="opacity: 0.85;">แต้มสะสม</p><h1 class="display-3 fw-bold mb-0" style="letter-spacing: -2px; text-shadow: 2px 2px 5px rgba(0,0,0,0.3); line-height: 1;">${user.totalPoints}</h1></div>
                 <div>${expiryMessageHtml}</div>
             </div>
-
             <div class="bg-white p-2 rounded-4 shadow-sm flex-shrink-0 d-flex flex-column align-items-center justify-content-center" style="width: 120px; height: 140px;">
                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${cleanPhone}" alt="QR" style="width: 100%; height: auto; display: block; border-radius: 8px;">
                 <span class="text-dark fw-bold mt-1" style="font-size: 0.65rem;">สแกนสะสมแต้ม</span>
@@ -260,6 +249,7 @@ function renderDashboard(user, notifications, rewards) {
     </div>
   `;
 
+  // 🔥 อัปเดตส่วนนี้: ทำให้ปุ่ม Setting และปุ่มออกจากระบบ แสดงตลอดเวลาทั้งบนคอมและมือถือ
   app.innerHTML = customStyles + `
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
         <div class="sidebar-menu" id="sidebarMenu">
@@ -268,12 +258,15 @@ function renderDashboard(user, notifications, rewards) {
         </div>
 
         <div class="container-fluid py-2" style="max-width: 1000px;">
-            <header class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 p-md-4 rounded-4 shadow-sm" style="border: 1px solid rgba(0,0,0,0.05); background: rgba(255,255,255,0.85) !important; backdrop-filter: blur(10px);">
-                <div class="d-flex align-items-center"><button id="burgerBtn" class="btn btn-light rounded-circle shadow-sm me-3 d-md-none d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; color: #4f46e5;"><i class="bi bi-list fs-4"></i></button><div><h3 class="fw-bold mb-0 text-dark fs-5 fs-md-3">สวัสดี, ${user.firstName} 🌟</h3></div></div>
+            <header class="d-flex justify-content-between align-items-center mb-4 bg-white p-2 p-md-4 rounded-4 shadow-sm" style="border: 1px solid rgba(0,0,0,0.05); background: rgba(255,255,255,0.85) !important; backdrop-filter: blur(10px);">
                 <div class="d-flex align-items-center">
-                    <div class="desktop-controls d-none d-md-flex align-items-center"><div id="settingsBtnDesktop" class="me-3" style="cursor: pointer;" title="ตั้งค่าข้อมูลส่วนตัว"><div class="bg-light rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 45px; height: 45px; color: #64748b; font-size: 1.3rem;"><i class="bi bi-gear-fill"></i></div></div></div>
-                    <div id="notificationBellBtn" class="position-relative me-0 me-md-4" style="cursor: pointer;"><div class="bg-light rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 45px; height: 45px; color: #4f46e5; font-size: 1.3rem;"><i class="bi bi-bell-fill"></i></div>${notifications.length > 0 ? `<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm border border-white" style="font-size: 0.75rem;">${notifications.length}</span>` : ""}</div>
-                    <div class="desktop-controls d-none d-md-flex align-items-center"><button id="logoutBtnDesktop" class="btn btn-outline-danger px-4 rounded-pill fw-medium"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</button></div>
+                    <button id="burgerBtn" class="btn btn-light rounded-circle shadow-sm me-2 d-md-none d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; color: #4f46e5;"><i class="bi bi-list fs-4"></i></button>
+                    <div><h3 class="fw-bold mb-0 text-dark fs-5 fs-md-3">สวัสดี, ${user.firstName}</h3></div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div id="settingsBtnDesktop" class="me-2" style="cursor: pointer;" title="ตั้งค่าข้อมูลส่วนตัว"><div class="bg-light rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 42px; height: 42px; color: #64748b; font-size: 1.2rem;"><i class="bi bi-gear-fill"></i></div></div>
+                    <div id="notificationBellBtn" class="position-relative me-2" style="cursor: pointer;" title="การแจ้งเตือน"><div class="bg-light rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 42px; height: 42px; color: #4f46e5; font-size: 1.2rem;"><i class="bi bi-bell-fill"></i></div>${notifications.length > 0 ? `<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm border border-white" style="font-size: 0.75rem;">${notifications.length}</span>` : ""}</div>
+                    <button id="logoutBtnDesktop" class="btn btn-outline-danger rounded-pill fw-medium d-flex align-items-center justify-content-center" style="height: 42px; padding: 0 16px;"><i class="bi bi-box-arrow-right m-0 me-md-2 fs-5"></i><span class="d-none d-md-block">ออกจากระบบ</span></button>
                 </div>
             </header>
 
@@ -297,6 +290,7 @@ function renderDashboard(user, notifications, rewards) {
   document.getElementById("burgerBtn").addEventListener("click", () => { sidebarMenu.classList.toggle("open"); sidebarOverlay.classList.toggle("show"); });
   document.getElementById("closeSidebarBtn").addEventListener("click", closeSidebar); sidebarOverlay.addEventListener("click", closeSidebar);
   const doLogout = () => { localStorage.removeItem("loggedInUser"); sessionStorage.removeItem("loggedInUser"); window.location.href = "index.html"; };
+  
   if(document.getElementById("logoutBtnDesktop")) document.getElementById("logoutBtnDesktop").addEventListener("click", doLogout);
   if(document.getElementById("menuMobileLogout")) document.getElementById("menuMobileLogout").addEventListener("click", doLogout);
 
@@ -367,12 +361,12 @@ function renderAdminPage(adminUser) {
   const app = document.getElementById("app");
   app.innerHTML = `
         <div class="container-fluid py-4" style="max-width: 1200px; animation: slideUpFade 0.6s ease-out;">
-            <header class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 bg-white p-4 rounded-4 shadow-sm" style="border: 1px solid rgba(0,0,0,0.05);">
-                <div class="mb-3 mb-md-0 d-flex align-items-center">
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; font-size: 1.5rem; background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;"><i class="bi bi-shield-lock-fill"></i></div>
-                    <div><h2 class="mb-0 fw-bold" style="color: #1e293b; font-size: 1.5rem;">ระบบจัดการหลังบ้าน</h2><p class="text-muted mb-0 small">ยินดีต้อนรับ: <span class="fw-semibold text-primary">${adminUser.firstName}</span></p></div>
+            <header class="d-flex flex-row justify-content-between align-items-center mb-5 bg-white p-3 p-md-4 rounded-4 shadow-sm" style="border: 1px solid rgba(0,0,0,0.05);">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px; font-size: 1.2rem; background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;"><i class="bi bi-shield-lock-fill"></i></div>
+                    <div><h2 class="mb-0 fw-bold fs-5 fs-md-3" style="color: #1e293b;">ระบบแอดมิน</h2><p class="text-muted mb-0 small d-none d-md-block">ยินดีต้อนรับ: <span class="fw-semibold text-primary">${adminUser.firstName}</span></p></div>
                 </div>
-                <button id="logoutBtn" class="btn btn-outline-danger px-4 py-2 rounded-pill fw-medium"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</button>
+                <button id="logoutBtn" class="btn btn-outline-danger px-3 px-md-4 py-2 rounded-pill fw-medium d-flex align-items-center"><i class="bi bi-box-arrow-right m-0 me-md-2"></i><span class="d-none d-md-block">ออกจากระบบ</span></button>
             </header>
 
             <div class="row g-4">
