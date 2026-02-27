@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   else handleLoginPage();
 });
 
-// === Login & Register Logic === (ทำงานเหมือนเดิม)
+// === Login ===
 function handleLoginPage() {
     const rememberedUser = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
     if (rememberedUser) { window.location.href = JSON.parse(rememberedUser).isAdmin ? "admin.html" : "dashboard.html"; return; }
@@ -58,12 +58,80 @@ function handleLoginPage() {
             });
         });
     }
+
+    const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+    if (forgotPasswordLink) {
+        forgotPasswordLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            Swal.fire({ title: "ลืมรหัสผ่าน", html: `<input id="swal-input-identifier" class="form-control" placeholder="เบอร์โทร หรือ อีเมล">`, showCancelButton: true, confirmButtonText: "ขอ OTP", preConfirm: () => document.getElementById("swal-input-identifier").value })
+            .then(res => {
+                if (res.isConfirmed) {
+                    apiCall("requestEmailOtp", { identifier: res.value }).then(() => {
+                        Swal.fire({ title: "ยืนยัน OTP", html: `<input id="swal-input-otp" class="form-control text-center fs-4" placeholder="6 หลัก">`, showCancelButton: true, confirmButtonText: "ยืนยัน", preConfirm: () => document.getElementById("swal-input-otp").value })
+                        .then(otpRes => {
+                            if (otpRes.isConfirmed) {
+                                apiCall("verifyEmailOtp", { identifier: res.value, otp: otpRes.value }).then(() => {
+                                    Swal.fire({ title: "ตั้งรหัสใหม่", html: `<input id="swal-new-pass" type="password" class="form-control">`, showCancelButton: true, confirmButtonText: "บันทึก", preConfirm: () => document.getElementById("swal-new-pass").value })
+                                    .then(passRes => { if (passRes.isConfirmed) apiCall("updatePassword", { identifier: res.value, newHashedPassword: hashPassword(passRes.value) }).then(() => Swal.fire("สำเร็จ!", "เปลี่ยนรหัสผ่านแล้ว", "success")); });
+                                });
+                            }
+                        });
+                    });
+                }
+            });
+        });
+    }
 }
 
-function handleRegisterPage() { /* ใช้ของเดิมได้เลย */ }
+// === Register ===
+function handleRegisterPage() {
+    const registerForm = document.getElementById("registerForm");
+    const registerBtn = document.getElementById("registerBtn");
+    const policyCheckbox = document.getElementById("policyCheckbox");
+    const viewPolicyLink = document.getElementById("viewPolicyLink"); 
+
+    // ปลดล็อคปุ่มเมื่อติ๊กถูก
+    if (policyCheckbox) {
+        policyCheckbox.addEventListener("change", function () { 
+            registerBtn.disabled = !this.checked; 
+        });
+    }
+    
+    // เด้ง Popup นโยบายความเป็นส่วนตัว
+    if (viewPolicyLink) {
+        viewPolicyLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            Swal.fire({
+                title: '<h4 class="fw-bold mb-0" style="color: #4f46e5;">นโยบายความเป็นส่วนตัว</h4>',
+                html: `
+                <div style="text-align: left; max-height: 350px; overflow-y: auto; padding: 15px;" class="small text-muted bg-light rounded-3 border mt-3">
+                    <p><strong>1. การเก็บรวบรวมข้อมูลส่วนบุคคล</strong><br>ระบบจะเก็บข้อมูล ชื่อ-นามสกุล, เบอร์โทรศัพท์ และอีเมล เพื่อใช้สำหรับการยืนยันตัวตนและการใช้งานระบบสมาชิก</p>
+                    <p><strong>2. การใช้งานข้อมูล</strong><br>ข้อมูลของท่านจะถูกใช้เพื่อการสะสมแต้ม, การแลกของรางวัล, และการส่งข้อความแจ้งเตือนที่เกี่ยวข้องกับระบบเท่านั้น</p>
+                    <p class="mb-0"><strong>3. การรักษาความปลอดภัย</strong><br>เราให้ความสำคัญกับความปลอดภัยข้อมูลของท่าน และจะไม่มีการเปิดเผยข้อมูลแก่บุคคลที่สามโดยไม่ได้รับอนุญาต</p>
+                </div>`,
+                customClass: { popup: 'rounded-4' }, confirmButtonText: "เข้าใจและยอมรับ", confirmButtonColor: "#4f46e5"
+            }).then((result) => { 
+                if (result.isConfirmed) { 
+                    if(policyCheckbox) policyCheckbox.checked = true; 
+                    if(registerBtn) registerBtn.disabled = false; 
+                } 
+            });
+        });
+    }
+
+    if (registerForm) {
+        registerForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const pass = document.getElementById("password").value;
+            if (pass !== document.getElementById("confirmPassword").value) return Swal.fire("ผิดพลาด", "รหัสผ่านไม่ตรงกัน", "error");
+            apiCall("register", { firstName: document.getElementById("firstName").value, lastName: document.getElementById("lastName").value, phone: document.getElementById("phone").value, email: document.getElementById("email").value, hashedPassword: hashPassword(pass) })
+            .then(() => Swal.fire("สำเร็จ!", "สมัครสมาชิกสำเร็จ", "success").then(() => window.location.href = "index.html"));
+        });
+    }
+}
 
 // ==========================================
-// 🔥 CUSTOMER DASHBOARD (UX/UI ใหม่สไตล์แอป)
+// 🔥 CUSTOMER DASHBOARD (UX/UI ใหม่)
 // ==========================================
 function handleDashboardPage() {
   const userStr = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
@@ -81,7 +149,6 @@ function renderDashboard(user, notifications, rewards) {
   const cleanPhone = user.phone.replace(/'/g, ''); 
   const firstLetter = user.firstName.charAt(0).toUpperCase();
 
-  // 🔥 CSS สไตล์ใหม่ (มี Bottom Nav, Cover Image)
   const customStyles = `
     <style>
         body { background: #f4f6f8; font-family: 'Kanit', sans-serif; padding-bottom: 70px; color: #333;}
@@ -89,25 +156,21 @@ function renderDashboard(user, notifications, rewards) {
         .mobile-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Header Cover & Profile */
         .cover-bg { height: 180px; background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); position: relative; }
         .profile-section { text-align: center; margin-top: -50px; position: relative; z-index: 2; }
         .profile-avatar { width: 100px; height: 100px; border-radius: 50%; border: 4px solid #fff; background: white; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: inline-flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #556677; background: #e2e8f0; }
         
-        /* Custom Cards */
         .clean-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); border: none; padding: 20px; margin-bottom: 15px; }
         .point-box { text-align: center; padding: 15px 0; }
         .point-box h1 { font-size: 3rem; font-weight: bold; color: #3b4b5b; margin: 0; line-height: 1; }
         .qr-box img { width: 130px; height: 130px; display: block; margin: 0 auto; border-radius: 10px; border: 1px solid #eee; padding: 5px;}
         
-        /* Bottom Navigation */
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; box-shadow: 0 -2px 15px rgba(0,0,0,0.05); display: flex; justify-content: space-around; padding: 10px 0 5px 0; z-index: 1000; border-top: 1px solid #f0f0f0; }
         .nav-item { text-align: center; color: #a0aec0; font-size: 0.75rem; font-weight: 500; cursor: pointer; flex: 1; transition: 0.2s; }
         .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 2px; transition: 0.2s;}
         .nav-item.active { color: #3b4b5b; }
         .nav-item.active i { transform: translateY(-3px); }
         
-        /* Utility */
         .swipe-container { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 15px; padding-bottom: 10px; scroll-snap-type: x mandatory; }
         .swipe-container::-webkit-scrollbar { display: none; }
         .menu-list-item { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; color: #556677; }
@@ -116,10 +179,9 @@ function renderDashboard(user, notifications, rewards) {
     </style>
   `;
 
-  // HTML Structure
   app.innerHTML = customStyles + `
     <div class="cover-bg">
-        <div style="position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.8); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; color: #333;" onclick="document.getElementById('nav-notifications').click();">
+        <div style="position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.8); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; color: #333; cursor:pointer;" onclick="document.getElementById('nav-notifications').click();">
             <i class="bi bi-bell-fill text-warning"></i> แจ้งเตือน ${notifications.length > 0 ? `(${notifications.length})` : ''}
         </div>
     </div>
@@ -142,7 +204,7 @@ function renderDashboard(user, notifications, rewards) {
             <div class="clean-card qr-box text-center">
                 <p class="fw-bold mb-3" style="color: #556677;">สแกนเพื่อสะสม/แลกพอยท์</p>
                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${cleanPhone}" alt="QR Code">
-                <p class="text-muted mt-3 mb-0 fs-5 letter-spacing-2 fw-bold">${cleanPhone}</p>
+                <p class="text-muted mt-3 mb-0 fs-5 fw-bold" style="letter-spacing: 2px;">${cleanPhone}</p>
             </div>
         </main>
 
@@ -168,7 +230,7 @@ function renderDashboard(user, notifications, rewards) {
                             <strong class="text-dark d-block text-truncate" style="max-width:200px; font-size:0.9rem;">${log.reason}</strong>
                             <small class="text-muted" style="font-size:0.75rem;">${new Date(log.timestamp).toLocaleDateString('th-TH')} ${new Date(log.timestamp).toLocaleTimeString('th-TH',{hour:'2-digit', minute:'2-digit'})}</small>
                         </div>
-                        <span class="badge bg-${log.pointsChange > 0 ? "success" : "danger"} bg-opacity-10 text-${log.pointsChange > 0 ? "success" : "danger"} rounded-pill px-3 py-2 fs-6">+${log.pointsChange}</span>
+                        <span class="badge bg-${log.pointsChange > 0 ? "success" : "danger"} bg-opacity-10 text-${log.pointsChange > 0 ? "success" : "danger"} rounded-pill px-3 py-2 fs-6">${log.pointsChange > 0 ? "+" : ""}${log.pointsChange}</span>
                     </li>`).join("") : '<li class="list-group-item text-center p-4 text-muted">ยังไม่มีประวัติการใช้งาน</li>'}
                 </ul>
             </div>
@@ -182,7 +244,6 @@ function renderDashboard(user, notifications, rewards) {
                 <div class="menu-list-item text-danger fw-bold" id="btnLogout"><i class="bi bi-box-arrow-right text-danger"></i> ออกจากระบบ</div>
             </div>
         </main>
-
     </div>
 
     <nav class="bottom-nav">
@@ -194,7 +255,7 @@ function renderDashboard(user, notifications, rewards) {
     </nav>
   `;
 
-  // === Navigation Logic ===
+  // Navigation Event
   document.querySelectorAll('.nav-item').forEach(btn => {
       btn.addEventListener('click', function() {
           document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active')); this.classList.add('active');
@@ -203,7 +264,6 @@ function renderDashboard(user, notifications, rewards) {
       });
   });
 
-  // === Actions ===
   document.getElementById("btnLogout").addEventListener("click", () => { localStorage.clear(); sessionStorage.clear(); window.location.href = "index.html"; });
   
   document.getElementById("nav-notifications").addEventListener("click", () => {
@@ -241,7 +301,6 @@ function handleAdminPage() {
   if (!adminUser.isAdmin) { window.location.href = "index.html"; return; }
   
   const app = document.getElementById("app");
-  
   const adminStyles = `<style>body { background: #f4f6f8; font-family: 'Kanit', sans-serif; } .admin-card { background: white; border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 25px; margin-bottom: 20px;} .topbar { background: #3b4b5b; color: white; padding: 15px 20px; border-radius: 0 0 16px 16px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}</style>`;
 
   app.innerHTML = adminStyles + `
