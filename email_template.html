@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Notification</title>
+    <style>
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            background-color: #f4f4f7; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .email-container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background-color: #ffffff; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+        }
+        .header { 
+            background-color: #ff5e5e; 
+            padding: 30px 20px; 
+            text-align: center; 
+        }
+        .header h1 { 
+            color: #ffffff; 
+            margin: 0; 
+            font-size: 24px; 
+            letter-spacing: 1px;
+        }
+        .content { 
+            padding: 40px 30px; 
+            color: #444444; 
+            line-height: 1.6; 
+            font-size: 16px;
+        }
+        .code-box { 
+            background-color: #fdf2f2; 
+            border: 1px dashed #ff5e5e; 
+            text-align: center; 
+            padding: 20px; 
+            margin: 30px 0; 
+            border-radius: 4px; 
+        }
+        .code-box h2 { 
+            margin: 0; 
+            color: #ff5e5e; 
+            font-size: 28px; 
+            letter-spacing: 2px;
+        }
+        .footer { 
+            background-color: #f9f9f9; 
+            padding: 20px; 
+            text-align: center; 
+            color: #999999; 
+            font-size: 13px; 
+            border-top: 1px solid #eeeeee; 
+        }
+        .btn-action {
+            display: inline-block;
+            background-color: #ff5e5e;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="email-container">
+    <div class="header">
+        <h1>LuckyShop24</h1>
+    </div>
+    
+    <div class="content">
+        <p>สวัสดีครับคุณ <strong>{{ customer_name }}</strong>,</p>
+        <p>ขอบคุณที่ใช้บริการแลกของรางวัลกับเรา นี่คือรหัสคูปอง/ของรางวัลของคุณ เพื่อนำไปใช้สิทธิ์ในขั้นตอนต่อไปครับ:</p>
+        
+        <div class="code-box">
+            <p style="margin-top: 0; color: #666;">รหัสการใช้สิทธิ์ของคุณคือ</p>
+            <h2>{{ reward_code }}</h2>
+        </div>
+        
+        <p>หากมีข้อสงสัย หรือต้องการความช่วยเหลือเพิ่มเติม สามารถติดต่อแอดมินผ่านช่องทางแชทของร้านได้ตลอดเวลาครับ</p>
+        
+        <div style="text-align: center;">
+            <a href="https://yourwebsite.com/contact" class="btn-action">ติดต่อแอดมิน</a>
+        </div>
+    </div>
+    
+    <div class="footer">
+        อีเมลฉบับนี้เป็นการแจ้งเตือนอัตโนมัติจากระบบ กรุณาอย่าตอบกลับ<br>
+        &copy; 2026 LuckyShop24. All rights reserved.
+    </div>
+</div>
+
+</body>
+</html>
