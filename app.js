@@ -71,13 +71,14 @@ function handleLoginPage() {
         });
     }
 
+    // [แก้ไข: ปุ่มลืมรหัสผ่าน ส่ง OTP เข้าอีเมลแทน SMS]
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     if(forgotPasswordLink) {
         forgotPasswordLink.addEventListener('click', function(e) {
             e.preventDefault();
             Swal.fire({
                 title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ลืมรหัสผ่าน?</h4>',
-                html: `<p class="text-muted small mb-4">กรุณากรอกเบอร์โทรศัพท์เพื่อรับรหัส OTP</p>
+                html: `<p class="text-muted small mb-4">กรุณากรอกเบอร์โทรศัพท์ที่ลงทะเบียนไว้<br>ระบบจะส่ง OTP ไปยัง <b>อีเมล</b> ที่ผูกกับเบอร์นี้</p>
                        <input type="tel" id="swal-forgot-phone" class="form-control text-center fs-5 py-2 rounded-3" placeholder="08XXXXXXXX" maxlength="10">`,
                 showCancelButton: true,
                 confirmButtonColor: '#3b4b5b',
@@ -93,44 +94,60 @@ function handleLoginPage() {
             }).then((result) => {
                 if (result.isConfirmed) {
                     const phone = result.value;
-                    Swal.fire({
-                        title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ยืนยันรหัส OTP</h4>',
-                        html: `<p class="text-muted small mb-4">รหัส 6 หลักถูกส่งไปยังเบอร์ ${phone} แล้ว</p>
-                               <input type="text" id="swal-forgot-otp" class="form-control text-center py-3 rounded-3 fw-bold" style="letter-spacing: 12px; font-size: 1.5rem; background:#f8f9fa;" placeholder="------" maxlength="6" autocomplete="off">`,
-                        showCancelButton: true,
-                        confirmButtonColor: '#3b4b5b',
-                        cancelButtonColor: '#e2e8f0',
-                        cancelButtonText: '<span class="text-dark fw-bold">ยกเลิก</span>',
-                        confirmButtonText: 'ยืนยันรหัส',
-                        customClass: { popup: 'rounded-4 shadow-lg' },
-                        preConfirm: () => {
-                            const otp = document.getElementById('swal-forgot-otp').value;
-                            if(otp.length !== 6) { Swal.showValidationMessage('กรุณากรอกรหัส OTP ให้ครบ 6 หลัก'); return false; }
-                            return otp;
-                        }
-                    }).then((otpResult) => {
-                        if(otpResult.isConfirmed) {
-                            Swal.fire({
-                                title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ตั้งรหัสผ่านใหม่</h4>',
-                                html: `<p class="text-muted small mb-4">กรุณาตั้งรหัสผ่านใหม่ที่จำได้ง่าย</p>
-                                       <input type="password" id="swal-new-pass" class="form-control mb-3 py-2 rounded-3 text-center" placeholder="รหัสผ่านใหม่">
-                                       <input type="password" id="swal-confirm-pass" class="form-control py-2 rounded-3 text-center" placeholder="ยืนยันรหัสผ่านใหม่">`,
-                                confirmButtonColor: '#3b4b5b',
-                                confirmButtonText: 'บันทึกรหัสผ่าน',
-                                customClass: { popup: 'rounded-4 shadow-lg' },
-                                preConfirm: () => {
-                                    const p1 = document.getElementById('swal-new-pass').value;
-                                    const p2 = document.getElementById('swal-confirm-pass').value;
-                                    if(!p1 || !p2) { Swal.showValidationMessage('กรุณากรอกรหัสผ่านให้ครบ'); return false; }
-                                    if(p1 !== p2) { Swal.showValidationMessage('รหัสผ่านไม่ตรงกัน'); return false; }
-                                    return p1;
-                                }
-                            }).then((passResult) => {
-                                if(passResult.isConfirmed) {
-                                    Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบ', confirmButtonColor: '#3b4b5b', customClass: { popup: 'rounded-4 shadow-lg' } });
-                                }
-                            });
-                        }
+                    
+                    // เรียก API ส่ง OTP ไปที่อีเมลโดยอ้างอิงจากเบอร์โทร
+                    apiCall("requestEmailOtp", { identifier: phone, type: "forgot_password" }).then(() => {
+                        
+                        Swal.fire({
+                            title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ยืนยันรหัส OTP</h4>',
+                            html: `<p class="text-muted small mb-4">รหัส 6 หลักถูกส่งไปยัง<b>อีเมล</b>ที่ผูกกับเบอร์ ${phone} แล้ว</p>
+                                   <input type="text" id="swal-forgot-otp" class="form-control text-center py-3 rounded-3 fw-bold" style="letter-spacing: 12px; font-size: 1.5rem; background:#f8f9fa;" placeholder="------" maxlength="6" autocomplete="off">`,
+                            showCancelButton: true,
+                            confirmButtonColor: '#3b4b5b',
+                            cancelButtonColor: '#e2e8f0',
+                            cancelButtonText: '<span class="text-dark fw-bold">ยกเลิก</span>',
+                            confirmButtonText: 'ยืนยันรหัส',
+                            customClass: { popup: 'rounded-4 shadow-lg' },
+                            preConfirm: () => {
+                                const otp = document.getElementById('swal-forgot-otp').value;
+                                if(otp.length !== 6) { Swal.showValidationMessage('กรุณากรอกรหัส OTP ให้ครบ 6 หลัก'); return false; }
+                                return otp;
+                            }
+                        }).then((otpResult) => {
+                            if(otpResult.isConfirmed) {
+                                const otpCode = otpResult.value;
+                                
+                                // ยืนยัน OTP
+                                apiCall("verifyEmailOtp", { identifier: phone, otp: otpCode, isForLogin: false }).then(() => {
+                                    
+                                    // ถ้า OTP ถูก ให้เด้งหน้าตั้งรหัสผ่านใหม่
+                                    Swal.fire({
+                                        title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ตั้งรหัสผ่านใหม่</h4>',
+                                        html: `<p class="text-muted small mb-4">กรุณาตั้งรหัสผ่านใหม่ที่จำได้ง่าย</p>
+                                               <input type="password" id="swal-new-pass" class="form-control mb-3 py-2 rounded-3 text-center" placeholder="รหัสผ่านใหม่">
+                                               <input type="password" id="swal-confirm-pass" class="form-control py-2 rounded-3 text-center" placeholder="ยืนยันรหัสผ่านใหม่">`,
+                                        confirmButtonColor: '#3b4b5b',
+                                        confirmButtonText: 'บันทึกรหัสผ่าน',
+                                        customClass: { popup: 'rounded-4 shadow-lg' },
+                                        preConfirm: () => {
+                                            const p1 = document.getElementById('swal-new-pass').value;
+                                            const p2 = document.getElementById('swal-confirm-pass').value;
+                                            if(!p1 || !p2) { Swal.showValidationMessage('กรุณากรอกรหัสผ่านให้ครบ'); return false; }
+                                            if(p1 !== p2) { Swal.showValidationMessage('รหัสผ่านไม่ตรงกัน'); return false; }
+                                            return p1;
+                                        }
+                                    }).then((passResult) => {
+                                        if(passResult.isConfirmed) {
+                                            const newPassword = passResult.value;
+                                            // ยิง API บันทึกรหัสผ่านใหม่ลงฐานข้อมูล
+                                            apiCall("resetPassword", { phone: phone, newHashedPassword: hashPassword(newPassword) }).then(() => {
+                                                Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบ', confirmButtonColor: '#3b4b5b', customClass: { popup: 'rounded-4 shadow-lg' } });
+                                            });
+                                        }
+                                    });
+                                });
+                            }
+                        });
                     });
                 }
             });
@@ -179,20 +196,34 @@ function handleRegisterPage() {
 }
 
 // === CUSTOMER DASHBOARD ===
-// ฟังก์ชัน Global สำหรับคลิกดูประวัติย้อนหลัง
-window.showHistoryReward = function(reason, date) {
+window.showHistoryReward = function(reason, date, refCode, status) {
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(refCode)}`;
+    const isUsed = status === 'used';
+    const statusBadge = isUsed 
+        ? '<h4 class="fw-bold text-success mb-0"><i class="bi bi-check-circle-fill"></i> ถูกใช้งานแล้ว</h4>' 
+        : '<h4 class="fw-bold text-warning mb-0"><i class="bi bi-hourglass-split"></i> รอแอดมินสแกนใช้งาน</h4>';
+        
     Swal.fire({
-        title: '<h4 class="fw-bold text-primary mb-0"><i class="bi bi-clock-history"></i> ประวัติการแลก</h4>',
+        title: '<h5 class="fw-bold text-primary mb-0"><i class="bi bi-gift"></i> รายละเอียดของรางวัล</h5>',
         html: `
             <div class="mt-3 p-4 bg-light rounded-4 border">
-                <h6 class="text-muted small mb-1">วันที่ทำรายการ: ${date}</h6>
+                <h6 class="text-muted small mb-2">วันที่แลก: ${date}</h6>
                 <h5 class="fw-bold text-dark mb-4">${reason}</h5>
+                
+                <div class="text-center mb-4">
+                    <img src="${qrUrl}" alt="QR Code" class="img-fluid border p-2 bg-white rounded-3 shadow-sm" style="width:160px; height:160px; ${isUsed ? 'opacity:0.2; filter:grayscale(100%);' : ''}">
+                </div>
+
                 <div class="p-3 border border-2 border-secondary rounded-3 bg-white" style="border-style: dashed !important;">
-                    <small class="text-muted d-block mb-1">สถานะ</small>
-                    <h4 class="fw-bold text-secondary mb-0">โปรดตรวจสอบกับแอดมิน</h4>
+                    <small class="text-muted d-block mb-1">รหัสคูปอง (สแกนหรือแจ้งแอดมิน)</small>
+                    <h3 class="fw-bold text-dark mb-0 tracking-widest">${refCode}</h3>
+                </div>
+                
+                <div class="mt-4 p-2 rounded-3 ${isUsed ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10'}">
+                    ${statusBadge}
                 </div>
             </div>
-            <p class="text-danger fw-bold mt-3 mb-0"><i class="bi bi-camera"></i> กรุณาแคปหน้าจอนี้เพื่อนำไปยืนยันสิทธิ์อีกครั้ง</p>
+            ${!isUsed ? '<p class="text-danger fw-bold mt-3 mb-0"><i class="bi bi-camera"></i> แคปหน้าจอนี้ให้แอดมินสแกนรับของได้เลย</p>' : ''}
         `,
         confirmButtonColor: '#3b4b5b',
         confirmButtonText: 'ปิดหน้าต่าง',
@@ -217,6 +248,7 @@ function renderDashboard(user, notifications, rewards) {
   
   const cleanPhone = user.phone.replace(/'/g, ''); 
   const firstLetter = user.firstName.charAt(0).toUpperCase();
+  const currentDayStr = new Date().getDay().toString();
 
   const customStyles = `
     <style>
@@ -243,8 +275,6 @@ function renderDashboard(user, notifications, rewards) {
         .history-item-hover:hover { background-color: #f8f9fa !important; }
     </style>
   `;
-
-  const currentDayStr = new Date().getDay().toString();
 
   app.innerHTML = customStyles + `
     <div class="cover-bg">
@@ -317,18 +347,22 @@ function renderDashboard(user, notifications, rewards) {
             <div class="clean-card p-0 overflow-hidden">
                 <ul class="list-group list-group-flush">
                 ${user.pointsHistory.length > 0 ? user.pointsHistory.map(log => {
-                    // ตรวจสอบว่าเป็นการแลกรางวัลหรือไม่ (แต้มติดลบ)
                     const isRedeem = log.pointsChange < 0;
                     const logDate = new Date(log.timestamp).toLocaleDateString('th-TH');
-                    const clickEvent = isRedeem ? `onclick="showHistoryReward('${log.reason.replace(/'/g, "\\'")}', '${logDate}')"` : '';
+                    
+                    const refCode = log.refCode || ("RWD-" + cleanPhone.slice(-4) + log.timestamp.toString().slice(-4));
+                    const status = log.status || 'pending';
+                    
+                    const clickEvent = isRedeem ? `onclick="showHistoryReward('${log.reason.replace(/'/g, "\\'")}', '${logDate}', '${refCode}', '${status}')"` : '';
                     const hoverClass = isRedeem ? 'history-item-hover' : '';
+                    const statusIcon = status === 'used' ? '<i class="bi bi-check-circle-fill text-success"></i> ใช้แล้ว' : '<i class="bi bi-qr-code text-primary"></i> โชว์คูปอง';
 
                     return `
                     <li class="list-group-item d-flex justify-content-between align-items-center p-3 border-bottom ${hoverClass}" ${clickEvent}>
                         <div>
                             <strong class="text-dark d-block text-truncate" style="max-width:200px; font-size:0.9rem;">${log.reason}</strong>
                             <small class="text-muted" style="font-size:0.75rem;">${logDate}</small>
-                            ${isRedeem ? '<br><small class="text-primary mt-1 fw-bold" style="font-size:0.7rem;"><i class="bi bi-hand-index-thumb"></i> คลิกดูรหัส</small>' : ''}
+                            ${isRedeem ? `<br><small class="mt-1 fw-bold" style="font-size:0.75rem;">${statusIcon}</small>` : ''}
                         </div>
                         <span class="badge bg-${log.pointsChange > 0 ? "success" : "danger"} bg-opacity-10 text-${log.pointsChange > 0 ? "success" : "danger"} rounded-pill px-3 py-2 fs-6">${log.pointsChange > 0 ? "+" : ""}${log.pointsChange}</span>
                     </li>`
@@ -377,7 +411,7 @@ function renderDashboard(user, notifications, rewards) {
               <div class="text-start mb-3">
                   <label class="small text-muted fw-bold mb-1">เบอร์โทรศัพท์ <span class="text-danger">(ไม่สามารถแก้ไขได้)</span></label>
                   <input type="text" class="form-control bg-light" value="${cleanPhone}" disabled>
-                  <small class="text-danger" style="font-size:0.75rem;">* หากต้องการเปลี่ยนเบอร์โทรศัพท์ กรุณาติดต่อแอดมินผ่านไลน์</small>
+                  <small class="text-danger" style="font-size:0.75rem;">* หากต้องการเปลี่ยนเบอร์ กรุณาติดต่อแอดมิน</small>
               </div>
           `,
           showCancelButton: true,
@@ -386,19 +420,17 @@ function renderDashboard(user, notifications, rewards) {
           cancelButtonText: '<span class="text-dark fw-bold">ยกเลิก</span>',
           confirmButtonText: 'บันทึกข้อมูล',
           customClass: { popup: 'rounded-4 shadow-lg' },
-          preConfirm: () => {
-              return document.getElementById("editEmailInput").value;
-          }
+          preConfirm: () => document.getElementById("editEmailInput").value
       }).then((res) => {
           if(res.isConfirmed) {
-              Swal.fire({icon: "success", title: "สำเร็จ", text: "ระบบได้บันทึกข้อมูลใหม่เรียบร้อยแล้ว", confirmButtonColor: '#3b4b5b', customClass: { popup: 'rounded-4' }});
+              Swal.fire({icon: "success", title: "สำเร็จ", text: "บันทึกข้อมูลเรียบร้อยแล้ว", confirmButtonColor: '#3b4b5b', customClass: { popup: 'rounded-4' }});
           }
       });
   });
   
   document.getElementById("nav-notifications").addEventListener("click", () => {
     let nHtml = '<div class="text-start mt-2">';
-    if (notifications.length === 0) nHtml += '<div class="text-center py-4 text-muted">ไม่มีการแจ้งเตือนใหม่</div>'; 
+    if (notifications.length === 0) nHtml += '<div class="text-center py-4 text-muted">ไม่มีแจ้งเตือนใหม่</div>'; 
     else {
         nHtml += '<ul class="list-group list-group-flush mb-3" style="max-height: 300px; overflow-y: auto;">';
         notifications.forEach((n) => { nHtml += `<li class="list-group-item px-1 py-3"><strong class="text-primary d-block mb-1 small">${new Date(n.timestamp).toLocaleDateString("th-TH")}</strong><span class="text-dark small">${n.message}</span></li>`; });
@@ -407,7 +439,6 @@ function renderDashboard(user, notifications, rewards) {
     Swal.fire({ title: '<h5 class="fw-bold text-start">การแจ้งเตือน</h5>', html: nHtml, showConfirmButton: false, showCloseButton: true, customClass: { popup: 'rounded-4' } });
   });
 
-  // [เพิ่มใหม่: แสดง Pop-up สวยๆ ตอนแลกรางวัลสำเร็จ]
   document.querySelectorAll(".redeem-btn").forEach(btn => {
       btn.addEventListener("click", function() {
           const rewardName = this.dataset.rewardName;
@@ -423,26 +454,8 @@ function renderDashboard(user, notifications, rewards) {
           }).then(res => {
               if (res.isConfirmed) {
                   apiCall("redeemReward", { memberPhone: cleanPhone, rewardId: this.dataset.rewardId }).then((respData) => {
-                      const refCode = (respData && respData.refCode) ? respData.refCode : "RWD-" + Math.floor(1000 + Math.random() * 9000);
-                      
-                      Swal.fire({
-                          title: '<h4 class="fw-bold text-success mb-0"><i class="bi bi-check-circle-fill"></i> แลกรางวัลสำเร็จ</h4>',
-                          html: `
-                              <div class="mt-3 p-4 bg-light rounded-4 border">
-                                  <h6 class="text-muted small mb-1">รายการที่แลก:</h6>
-                                  <h5 class="fw-bold text-dark mb-4">${rewardName}</h5>
-                                  <div class="p-3 border border-2 border-success rounded-3 bg-white" style="border-style: dashed !important;">
-                                      <small class="text-muted d-block mb-1">รหัสอ้างอิงของคุณ</small>
-                                      <h2 class="fw-bold text-success mb-0 tracking-widest">${refCode}</h2>
-                                  </div>
-                              </div>
-                              <p class="text-danger fw-bold mt-3 mb-0"><i class="bi bi-camera"></i> กรุณาแคปหน้าจอนี้เพื่อนำไปยืนยันกับแอดมิน</p>
-                          `,
-                          confirmButtonColor: '#3b4b5b',
-                          confirmButtonText: 'รับทราบ',
-                          allowOutsideClick: false,
-                          customClass: { popup: 'rounded-4 shadow-lg' }
-                      }).then(() => location.reload());
+                      const refCode = (respData && respData.refCode) ? respData.refCode : "RWD-" + cleanPhone.slice(-4) + Math.floor(1000 + Math.random() * 9000);
+                      showHistoryReward(rewardName, new Date().toLocaleDateString('th-TH'), refCode, 'pending');
                   });
               }
           });
@@ -538,11 +551,11 @@ function handleAdminPage() {
             <div class="row g-4">
                 <div class="col-lg-7">
                     <div class="admin-card">
-                        <h5 class="fw-bold mb-4" style="color:#3b4b5b;"><i class="bi bi-qr-code-scan me-2"></i>ค้นหาลูกค้า & จัดการแต้ม</h5>
+                        <h5 class="fw-bold mb-4" style="color:#3b4b5b;"><i class="bi bi-qr-code-scan me-2"></i>สแกน หรือ ค้นหาเบอร์</h5>
                         <div class="input-group mb-4">
                             <button class="btn btn-light border" id="scanBarcodeBtn"><i class="bi bi-qr-code-scan fs-5 text-primary"></i></button>
-                            <input type="text" id="searchPhone" class="form-control" placeholder="กรอกเบอร์โทรศัพท์ลูกค้า...">
-                            <button class="btn text-white" id="searchBtn" style="background:#3b4b5b;">ค้นหา</button>
+                            <input type="text" id="searchPhone" class="form-control" placeholder="เบอร์โทรศัพท์ หรือ รหัสคูปอง (RWD-XXXX)">
+                            <button class="btn text-white" id="searchBtn" style="background:#3b4b5b;">ตกลง</button>
                         </div>
                         
                         <div id="customerActions" class="d-none">
@@ -582,7 +595,7 @@ function handleAdminPage() {
                             </div>
 
                             <div id="daySelectorContainer" class="mb-4 d-none p-3 bg-light rounded border">
-                                <label class="small fw-bold text-primary mb-2">เลือกวันที่จะให้โชว์โปรนี้ (ถ้าไม่เลือกจะโชว์ทุกวัน)</label>
+                                <label class="small fw-bold text-primary mb-2">เลือกวันที่จะให้โชว์โปรนี้</label>
                                 <div class="d-flex flex-wrap gap-2">
                                     <div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="1" id="d1"><label class="form-check-label small" for="d1">จ.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="2" id="d2"><label class="form-check-label small" for="d2">อ.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="3" id="d3"><label class="form-check-label small" for="d3">พ.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="4" id="d4"><label class="form-check-label small" for="d4">พฤ.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="5" id="d5"><label class="form-check-label small" for="d5">ศ.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="6" id="d6"><label class="form-check-label small text-danger" for="d6">ส.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="0" id="d0"><label class="form-check-label small text-danger" for="d0">อา.</label></div>
                                 </div>
@@ -615,27 +628,57 @@ function handleAdminPage() {
 
   let currentCustomerPhone = null;
   const searchAction = () => {
-    const phone = document.getElementById("searchPhone").value; if (!phone) return;
-    apiCall("searchUser", { phone }).then((user) => {
-        currentCustomerPhone = user.phone.replace(/'/g, '');
-        document.getElementById("customerDetails").innerHTML = `
-            <div class="d-flex justify-content-between align-items-center w-100">
-                <div>
-                    <h6 class="fw-bold mb-0">${user.firstName} ${user.lastName}</h6>
-                    <small class="text-muted"><i class="bi bi-telephone"></i> ${currentCustomerPhone}</small>
+    const inputVal = document.getElementById("searchPhone").value.trim(); 
+    if (!inputVal) return;
+
+    if (inputVal.toUpperCase().startsWith("RWD-")) {
+        Swal.fire({
+            title: '<h5 class="fw-bold mb-0 text-primary"><i class="bi bi-ticket-perforated"></i> คูปองของรางวัล</h5>',
+            html: `
+                <div class="p-4 bg-light rounded-4 my-3 text-center border">
+                    <small class="text-muted mb-1 d-block">รหัสคูปอง</small>
+                    <h3 class="fw-bold text-dark mb-0 tracking-widest">${inputVal}</h3>
                 </div>
-                <div class="text-end">
-                    <h4 class="text-primary mb-0 fw-bold">${user.totalPoints} <span class="fs-6 text-muted">พอยท์</span></h4>
+                <p class="text-secondary fw-bold">คุณต้องการ <u>ยืนยันการใช้คูปองนี้</u> ใช่หรือไม่?</p>
+            `,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#e2e8f0',
+            confirmButtonText: 'ยืนยันการใช้',
+            cancelButtonText: '<span class="text-dark fw-bold">ปิด</span>',
+            customClass: { popup: 'rounded-4 shadow-lg' }
+        }).then(res => {
+            if(res.isConfirmed) {
+                apiCall("useCoupon", { code: inputVal, adminPhone: adminUser.phone }).then(() => {
+                    Swal.fire({title: 'สำเร็จ!', text: 'อัปเดตสถานะคูปองเป็น "ใช้งานแล้ว" เรียบร้อย', icon: 'success', confirmButtonColor: '#3b4b5b', customClass: { popup: 'rounded-4' }});
+                    document.getElementById("searchPhone").value = "";
+                });
+            }
+        });
+    } else {
+        apiCall("searchUser", { phone: inputVal }).then((user) => {
+            currentCustomerPhone = user.phone.replace(/'/g, '');
+            document.getElementById("customerDetails").innerHTML = `
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <div>
+                        <h6 class="fw-bold mb-0">${user.firstName} ${user.lastName}</h6>
+                        <small class="text-muted"><i class="bi bi-telephone"></i> ${currentCustomerPhone}</small>
+                    </div>
+                    <div class="text-end">
+                        <h4 class="text-primary mb-0 fw-bold">${user.totalPoints} <span class="fs-6 text-muted">พอยท์</span></h4>
+                    </div>
                 </div>
-            </div>
-            <div class="d-flex gap-2 w-100 mt-2">
-                <button class="btn btn-sm btn-outline-info flex-fill fw-bold" onclick="editCustomerPhone('${currentCustomerPhone}')"><i class="bi bi-pencil-square"></i> แก้เบอร์โทร</button>
-                <button class="btn btn-sm btn-outline-danger flex-fill fw-bold" onclick="suspendCustomer('${currentCustomerPhone}')"><i class="bi bi-person-x"></i> ระงับบัญชี</button>
-            </div>
-        `;
-        document.getElementById("customerActions").classList.remove("d-none");
-      }).catch(() => Swal.fire({title: "ไม่พบข้อมูล", text:"กรุณาตรวจสอบเบอร์โทรศัพท์อีกครั้ง", icon: "warning", customClass: { popup: 'rounded-4' }}));
+                <div class="d-flex gap-2 w-100 mt-2">
+                    <button class="btn btn-sm btn-outline-info flex-fill fw-bold" onclick="editCustomerPhone('${currentCustomerPhone}')"><i class="bi bi-pencil-square"></i> แก้เบอร์โทร</button>
+                    <button class="btn btn-sm btn-outline-danger flex-fill fw-bold" onclick="suspendCustomer('${currentCustomerPhone}')"><i class="bi bi-person-x"></i> ระงับบัญชี</button>
+                </div>
+            `;
+            document.getElementById("customerActions").classList.remove("d-none");
+        }).catch(() => Swal.fire({title: "ไม่พบข้อมูล", text:"กรุณาตรวจสอบเบอร์โทรศัพท์อีกครั้ง", icon: "warning", customClass: { popup: 'rounded-4' }}));
+    }
   };
+  
   document.getElementById("searchBtn").addEventListener("click", searchAction);
 
   document.getElementById("pointsForm").addEventListener("submit", (e) => {
@@ -654,8 +697,8 @@ function handleAdminPage() {
 
   document.getElementById("scanBarcodeBtn").addEventListener("click", () => {
       Swal.fire({
-          title: 'สแกน QR Code ลูกค้า',
-          html: '<div id="admin-qr-reader" style="width: 100%; border-radius: 8px; overflow: hidden;"></div><p class="small text-danger mt-2">* ต้องใช้งานผ่านเบราว์เซอร์ที่รองรับและอนุญาตให้ใช้กล้อง (HTTPS)</p>',
+          title: 'สแกน QR Code',
+          html: '<div id="admin-qr-reader" style="width: 100%; border-radius: 8px; overflow: hidden;"></div><p class="small text-muted mt-2">รองรับทั้งการสแกนเบอร์ลูกค้า และ รหัสคูปองรางวัล</p>',
           showCancelButton: true,
           showConfirmButton: false,
           cancelButtonText: 'ปิดกล้อง',
