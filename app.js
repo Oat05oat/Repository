@@ -179,6 +179,27 @@ function handleRegisterPage() {
 }
 
 // === CUSTOMER DASHBOARD ===
+// ฟังก์ชัน Global สำหรับคลิกดูประวัติย้อนหลัง
+window.showHistoryReward = function(reason, date) {
+    Swal.fire({
+        title: '<h4 class="fw-bold text-primary mb-0"><i class="bi bi-clock-history"></i> ประวัติการแลก</h4>',
+        html: `
+            <div class="mt-3 p-4 bg-light rounded-4 border">
+                <h6 class="text-muted small mb-1">วันที่ทำรายการ: ${date}</h6>
+                <h5 class="fw-bold text-dark mb-4">${reason}</h5>
+                <div class="p-3 border border-2 border-secondary rounded-3 bg-white" style="border-style: dashed !important;">
+                    <small class="text-muted d-block mb-1">สถานะ</small>
+                    <h4 class="fw-bold text-secondary mb-0">โปรดตรวจสอบกับแอดมิน</h4>
+                </div>
+            </div>
+            <p class="text-danger fw-bold mt-3 mb-0"><i class="bi bi-camera"></i> กรุณาแคปหน้าจอนี้เพื่อนำไปยืนยันสิทธิ์อีกครั้ง</p>
+        `,
+        confirmButtonColor: '#3b4b5b',
+        confirmButtonText: 'ปิดหน้าต่าง',
+        customClass: { popup: 'rounded-4 shadow-lg' }
+    });
+};
+
 function handleDashboardPage() {
   const userStr = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
   if (!userStr) { window.location.href = "index.html"; return; }
@@ -218,10 +239,11 @@ function renderDashboard(user, notifications, rewards) {
         .menu-list-item:hover { background: #f8f9fa; }
         .menu-list-item:last-child { border-bottom: none; }
         .menu-list-item i { font-size: 1.2rem; width: 30px; color: #888; }
+        .history-item-hover { transition: background 0.2s; cursor: pointer; }
+        .history-item-hover:hover { background-color: #f8f9fa !important; }
     </style>
   `;
 
-  // หาวันปัจจุบัน (0=อาทิตย์, 1=จันทร์ ...)
   const currentDayStr = new Date().getDay().toString();
 
   app.innerHTML = customStyles + `
@@ -258,7 +280,6 @@ function renderDashboard(user, notifications, rewards) {
                 ${rewardsByCategory[category].map(reward => {
                     if(reward.isPlaceholder) return `<div class="card border border-dashed rounded-4 flex-shrink-0 bg-light" style="width: 220px; scroll-snap-align: center;"><div class="card-body text-center py-4"><i class="bi bi-hourglass-split display-4 text-muted mb-2"></i><h6 class="fw-bold text-dark">${reward.name}</h6><small class="text-muted">${reward.description}</small></div></div>`;
                     
-                    // ระบบเช็ควันของโปรประจำสัปดาห์
                     let isAvailableToday = true;
                     let notAvailableMsg = "";
                     if (category === "โปรประจำสัปดาห์" && reward.activeDays) {
@@ -295,11 +316,23 @@ function renderDashboard(user, notifications, rewards) {
             <h5 class="fw-bold mb-3" style="color: #3b4b5b;">ประวัติการทำรายการ</h5>
             <div class="clean-card p-0 overflow-hidden">
                 <ul class="list-group list-group-flush">
-                ${user.pointsHistory.length > 0 ? user.pointsHistory.map(log => `
-                    <li class="list-group-item d-flex justify-content-between align-items-center p-3 border-bottom">
-                        <div><strong class="text-dark d-block text-truncate" style="max-width:200px; font-size:0.9rem;">${log.reason}</strong><small class="text-muted" style="font-size:0.75rem;">${new Date(log.timestamp).toLocaleDateString('th-TH')}</small></div>
+                ${user.pointsHistory.length > 0 ? user.pointsHistory.map(log => {
+                    // ตรวจสอบว่าเป็นการแลกรางวัลหรือไม่ (แต้มติดลบ)
+                    const isRedeem = log.pointsChange < 0;
+                    const logDate = new Date(log.timestamp).toLocaleDateString('th-TH');
+                    const clickEvent = isRedeem ? `onclick="showHistoryReward('${log.reason.replace(/'/g, "\\'")}', '${logDate}')"` : '';
+                    const hoverClass = isRedeem ? 'history-item-hover' : '';
+
+                    return `
+                    <li class="list-group-item d-flex justify-content-between align-items-center p-3 border-bottom ${hoverClass}" ${clickEvent}>
+                        <div>
+                            <strong class="text-dark d-block text-truncate" style="max-width:200px; font-size:0.9rem;">${log.reason}</strong>
+                            <small class="text-muted" style="font-size:0.75rem;">${logDate}</small>
+                            ${isRedeem ? '<br><small class="text-primary mt-1 fw-bold" style="font-size:0.7rem;"><i class="bi bi-hand-index-thumb"></i> คลิกดูรหัส</small>' : ''}
+                        </div>
                         <span class="badge bg-${log.pointsChange > 0 ? "success" : "danger"} bg-opacity-10 text-${log.pointsChange > 0 ? "success" : "danger"} rounded-pill px-3 py-2 fs-6">${log.pointsChange > 0 ? "+" : ""}${log.pointsChange}</span>
-                    </li>`).join("") : '<li class="list-group-item text-center p-4 text-muted">ยังไม่มีประวัติการใช้งาน</li>'}
+                    </li>`
+                }).join("") : '<li class="list-group-item text-center p-4 text-muted">ยังไม่มีประวัติการใช้งาน</li>'}
                 </ul>
             </div>
         </main>
@@ -333,7 +366,6 @@ function renderDashboard(user, notifications, rewards) {
 
   document.getElementById("btnLogout").addEventListener("click", () => { localStorage.clear(); sessionStorage.clear(); window.location.href = "index.html"; });
 
-  // [เพิ่มใหม่: ปุ่มแก้ไขข้อมูลส่วนตัว]
   document.getElementById("btnEditProfile").addEventListener("click", () => {
       Swal.fire({
           title: '<h5 class="fw-bold mb-0" style="color:#3b4b5b;">แก้ไขข้อมูลส่วนตัว</h5>',
@@ -359,9 +391,7 @@ function renderDashboard(user, notifications, rewards) {
           }
       }).then((res) => {
           if(res.isConfirmed) {
-              // ตรงนี้คือการยิง API ไปอัปเดต Email ถ้ามีการเชื่อมฐานข้อมูล (จำลองการแจ้งเตือนไว้ก่อน)
               Swal.fire({icon: "success", title: "สำเร็จ", text: "ระบบได้บันทึกข้อมูลใหม่เรียบร้อยแล้ว", confirmButtonColor: '#3b4b5b', customClass: { popup: 'rounded-4' }});
-              // apiCall("updateProfile", { phone: cleanPhone, newEmail: res.value }).then(() => { ... });
           }
       });
   });
@@ -377,10 +407,44 @@ function renderDashboard(user, notifications, rewards) {
     Swal.fire({ title: '<h5 class="fw-bold text-start">การแจ้งเตือน</h5>', html: nHtml, showConfirmButton: false, showCloseButton: true, customClass: { popup: 'rounded-4' } });
   });
 
+  // [เพิ่มใหม่: แสดง Pop-up สวยๆ ตอนแลกรางวัลสำเร็จ]
   document.querySelectorAll(".redeem-btn").forEach(btn => {
       btn.addEventListener("click", function() {
-          Swal.fire({ title: "ยืนยันการแลกรางวัล?", text: `ต้องการแลก "${this.dataset.rewardName}" ใช่ไหม?`, icon: "question", showCancelButton: true, confirmButtonColor: "#10b981", confirmButtonText: "ยืนยัน", customClass: { popup: 'rounded-4' } }).then(res => {
-              if (res.isConfirmed) apiCall("redeemReward", { memberPhone: cleanPhone, rewardId: this.dataset.rewardId }).then(() => Swal.fire({title: "สำเร็จ", text: "แลกของรางวัลแล้ว กรุณาแคปหน้าจอแจ้งแอดมิน", icon: "success", customClass: { popup: 'rounded-4' }}).then(() => location.reload()));
+          const rewardName = this.dataset.rewardName;
+          Swal.fire({ 
+              title: "ยืนยันการแลกรางวัล?", 
+              text: `ต้องการแลก "${rewardName}" ใช่ไหม?`, 
+              icon: "question", 
+              showCancelButton: true, 
+              confirmButtonColor: "#10b981", 
+              confirmButtonText: "ยืนยัน", 
+              cancelButtonText: "ยกเลิก",
+              customClass: { popup: 'rounded-4' } 
+          }).then(res => {
+              if (res.isConfirmed) {
+                  apiCall("redeemReward", { memberPhone: cleanPhone, rewardId: this.dataset.rewardId }).then((respData) => {
+                      const refCode = (respData && respData.refCode) ? respData.refCode : "RWD-" + Math.floor(1000 + Math.random() * 9000);
+                      
+                      Swal.fire({
+                          title: '<h4 class="fw-bold text-success mb-0"><i class="bi bi-check-circle-fill"></i> แลกรางวัลสำเร็จ</h4>',
+                          html: `
+                              <div class="mt-3 p-4 bg-light rounded-4 border">
+                                  <h6 class="text-muted small mb-1">รายการที่แลก:</h6>
+                                  <h5 class="fw-bold text-dark mb-4">${rewardName}</h5>
+                                  <div class="p-3 border border-2 border-success rounded-3 bg-white" style="border-style: dashed !important;">
+                                      <small class="text-muted d-block mb-1">รหัสอ้างอิงของคุณ</small>
+                                      <h2 class="fw-bold text-success mb-0 tracking-widest">${refCode}</h2>
+                                  </div>
+                              </div>
+                              <p class="text-danger fw-bold mt-3 mb-0"><i class="bi bi-camera"></i> กรุณาแคปหน้าจอนี้เพื่อนำไปยืนยันกับแอดมิน</p>
+                          `,
+                          confirmButtonColor: '#3b4b5b',
+                          confirmButtonText: 'รับทราบ',
+                          allowOutsideClick: false,
+                          customClass: { popup: 'rounded-4 shadow-lg' }
+                      }).then(() => location.reload());
+                  });
+              }
           });
       });
   });
@@ -393,7 +457,6 @@ function handleAdminPage() {
   const adminUser = JSON.parse(userStr);
   if (!adminUser.isAdmin) { window.location.href = "index.html"; return; }
   
-  // กำหนดฟังก์ชันไว้ให้สามารถเรียกใช้แบบ Global ได้จาก onclick ใน Template String
   window.editCustomerPhone = function(oldPhone) {
       Swal.fire({
           title: 'เปลี่ยนเบอร์โทรลูกค้า',
@@ -408,7 +471,6 @@ function handleAdminPage() {
       }).then((result) => {
           if (result.isConfirmed && result.value) {
               Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: `เปลี่ยนเบอร์จาก ${oldPhone} เป็น ${result.value} แล้ว`, customClass: { popup: 'rounded-4' }});
-              // ใส่ API ตรงนี้: apiCall("changeCustomerPhone", { oldPhone: oldPhone, newPhone: result.value }).then(...)
           }
       });
   };
@@ -427,7 +489,6 @@ function handleAdminPage() {
       }).then((result) => {
           if (result.isConfirmed) {
               Swal.fire({ icon: 'success', title: 'ระงับบัญชีแล้ว', text: `บัญชี ${phone} ถูกระงับเรียบร้อย`, customClass: { popup: 'rounded-4' }});
-              // ใส่ API ตรงนี้: apiCall("suspendUser", { phone: phone }).then(...)
           }
       });
   };
@@ -557,7 +618,6 @@ function handleAdminPage() {
     const phone = document.getElementById("searchPhone").value; if (!phone) return;
     apiCall("searchUser", { phone }).then((user) => {
         currentCustomerPhone = user.phone.replace(/'/g, '');
-        // [เพิ่มใหม่: ปุ่มจัดการข้อมูลลูกค้าในส่วน Admin]
         document.getElementById("customerDetails").innerHTML = `
             <div class="d-flex justify-content-between align-items-center w-100">
                 <div>
