@@ -3,42 +3,425 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เข้าสู่ระบบ | ระบบสะสมแต้ม</title>
+    <title>Pointspot System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Prompt', sans-serif; }</style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f3f4f6; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .bg-pointspot { background-color: #5c6e80; }
+        .bg-pointspot-dark { background-color: #394a59; }
+        .text-pointspot { color: #5c6e80; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
 </head>
-<body class="bg-slate-800 flex items-center justify-center min-h-screen">
+<body class="text-gray-800 antialiased">
 
-    <div class="w-full max-w-md p-8 bg-white rounded-2xl shadow-2xl mx-4">
-        <div class="text-center mb-8">
-            <div class="w-16 h-16 bg-indigo-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold shadow-lg">L</div>
-            <h1 class="text-2xl font-bold text-gray-800">ระบบสมาชิก</h1>
-            <p class="text-sm text-gray-500 mt-2">กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ</p>
-        </div>
-
-        <form action="user_dashboard.html" method="GET" class="space-y-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์</label>
-                <div class="flex">
-                    <span class="inline-flex items-center px-4 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                        +66
-                    </span>
-                    <input type="text" required class="flex-1 block w-full rounded-none rounded-r-md sm:text-sm border-gray-300 border p-2.5 focus:ring-indigo-500 focus:border-indigo-500" placeholder="08X-XXX-XXXX">
+    <div id="view-login" class="page active h-screen w-full bg-pointspot flex flex-col justify-center items-center px-6 relative">
+        <div class="text-center mb-10 w-full max-w-sm">
+            <p class="text-white mb-4 text-sm">ระบบบัตรสมาชิกสะสมแต้ม</p>
+            <div class="flex justify-center items-center space-x-3 mb-16">
+                <div class="w-16 h-16 rounded-full border-4 border-white flex justify-center items-center">
+                    <i class="fa-regular fa-star text-white text-3xl"></i>
                 </div>
+                <h1 class="text-white text-5xl font-semibold tracking-wide">pointspot</h1>
             </div>
 
-            <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
-                เข้าสู่ระบบสมาชิก
-            </button>
-        </form>
+            <div class="text-right text-white font-bold text-sm mb-10">TH / EN</div>
 
-        <div class="mt-8 pt-6 border-t border-gray-100 text-center">
-            <a href="admin_dashboard.html" class="text-sm text-indigo-600 hover:text-indigo-500 font-medium">
-                เข้าสู่ระบบผู้ดูแล (Admin) &rarr;
-            </a>
+            <div class="border-b border-gray-300 flex items-center py-2 mb-6">
+                <div class="text-white px-2 cursor-pointer flex items-center gap-1">+66 <i class="fa-solid fa-caret-down text-xs"></i></div>
+                <input type="text" placeholder="เบอร์โทรศัพท์มือถือ" class="bg-transparent border-none outline-none text-white placeholder-gray-300 ml-4 w-full">
+            </div>
+
+            <button onclick="switchView('view-customer-home')" class="w-full bg-pointspot-dark text-white py-3 rounded text-lg mb-4 hover:bg-opacity-90 transition shadow-lg">เข้าสู่ระบบ</button>
+            <button onclick="switchView('view-admin')" class="w-full bg-gray-200 text-gray-700 py-2 rounded text-sm hover:bg-gray-300 transition mt-4">เข้าสู่ระบบหลังบ้าน (Admin)</button>
+        </div>
+
+        <div class="absolute bottom-6 text-center text-xs text-gray-300">
+            <p>การล็อคอินเข้าสู่ Pointspot ท่านยอมรับ</p>
+            <p class="mt-1"><a href="#" class="hover:underline text-white">เงื่อนไขการใช้บริการ</a> | <a href="#" class="hover:underline text-white">นโยบายข้อมูลส่วนบุคคล</a></p>
         </div>
     </div>
 
+    <div id="view-customer-home" class="page bg-gray-50 min-h-screen max-w-md mx-auto relative pb-20 shadow-xl overflow-hidden">
+        <div class="absolute top-0 w-full p-4 flex justify-between items-center z-10">
+            <button onclick="toggleCustomerMenu()" class="text-white text-2xl drop-shadow-md"><i class="fa-solid fa-bars"></i></button>
+            <button onclick="switchView('view-customer-profile')" class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center border-2 border-white overflow-hidden shadow cursor-pointer hover:opacity-80">
+                <i class="fa-solid fa-user text-gray-500"></i>
+            </button>
+        </div>
+
+        <div class="h-56 bg-gradient-to-b from-gray-200 to-gray-300 flex justify-center items-center relative">
+            <h2 class="text-3xl font-light text-gray-500 tracking-widest">MY BUSINESS</h2>
+            <p class="absolute bottom-8 text-xs text-gray-400 tracking-widest">CHANGE YOUR IMAGE HERE</p>
+        </div>
+
+        <div class="text-center -mt-16 px-4">
+            <div class="w-32 h-32 mx-auto rounded-full bg-pink-200 border-4 border-white shadow-lg flex items-center justify-center overflow-hidden mb-3 relative">
+                <div class="text-center text-pink-700 font-bold leading-tight">
+                    <i class="fa-solid fa-paw text-3xl mb-1"></i><br>LUCKY<br>SHOP 24
+                </div>
+            </div>
+            <button class="absolute top-60 right-4 bg-gray-100 px-3 py-1.5 rounded text-sm text-gray-600 shadow-sm border border-gray-200 flex items-center gap-2">
+                <i class="fa-solid fa-user-plus"></i> ชวนเพื่อน
+            </button>
+
+            <h2 class="text-2xl font-semibold text-gray-800 mt-2">LuckyShop24</h2>
+            <p class="text-sm text-gray-400 mb-5">@db023c8c</p>
+
+            <div class="flex justify-center gap-4 mb-8">
+                <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center shadow-inner text-gray-500 text-lg cursor-pointer hover:bg-gray-200"><i class="fa-regular fa-credit-card"></i></div>
+                <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center shadow-inner text-gray-500 text-lg cursor-pointer hover:bg-gray-200"><i class="fa-solid fa-info"></i></div>
+                <div onclick="switchView('view-customer-profile')" class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center shadow-inner text-gray-500 text-lg cursor-pointer hover:bg-gray-200"><i class="fa-regular fa-user"></i></div>
+            </div>
+        </div>
+
+        <div class="px-4">
+            <div class="bg-white rounded-xl shadow p-6 flex justify-between items-center cursor-pointer border border-gray-100">
+                <div class="text-center w-full relative">
+                    <p class="text-pointspot text-sm font-semibold mb-2">พอยท์สะสม</p>
+                    <h1 class="text-4xl text-pointspot font-bold">10</h1>
+                    <i class="fa-solid fa-chevron-right absolute right-0 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <div id="customer-menu" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden transition-opacity">
+            <div class="w-4/5 max-w-sm bg-white h-full shadow-2xl overflow-y-auto transform -translate-x-full transition-transform duration-300 flex flex-col" id="customer-menu-content">
+                <div class="p-6 border-b border-gray-100 flex flex-col items-center mt-4">
+                    <div class="w-12 h-12 rounded-full border-2 border-pointspot flex justify-center items-center mb-3 text-pointspot text-xl">
+                        <i class="fa-regular fa-star"></i>
+                    </div>
+                    <h2 class="text-2xl font-semibold text-pointspot tracking-wide mb-1">pointspot</h2>
+                    <p class="text-xs text-gray-500">ระบบบัตรสมาชิกสะสมแต้มด้วยเบอร์โทร</p>
+                </div>
+                <ul class="py-2 flex-1">
+                    <li onclick="switchView('view-customer-home'); toggleCustomerMenu();" class="px-6 py-4 border-b border-gray-100 flex items-center gap-4 text-gray-500 hover:bg-gray-50 cursor-pointer">
+                        <i class="fa-regular fa-star text-xl w-6 text-center"></i> บัญชีสะสมพอยท์
+                    </li>
+                    <li class="px-6 py-4 border-b border-gray-100 flex items-center gap-4 text-gray-500 hover:bg-gray-50 cursor-pointer">
+                        <i class="fa-solid fa-ticket text-xl w-6 text-center"></i> คูปองของฉัน
+                    </li>
+                    <li onclick="switchView('view-customer-profile'); toggleCustomerMenu();" class="px-6 py-4 border-b border-gray-100 flex items-center gap-4 text-gray-500 hover:bg-gray-50 cursor-pointer">
+                        <i class="fa-regular fa-user text-xl w-6 text-center"></i> โปรไฟล์
+                    </li>
+                </ul>
+            </div>
+            <div class="flex-1 cursor-pointer" onclick="toggleCustomerMenu()"></div>
+        </div>
+
+        <div class="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 flex justify-between px-6 py-3 text-xs text-gray-400 z-40">
+            <div onclick="switchView('view-customer-home')" class="flex flex-col items-center cursor-pointer text-gray-400 hover:text-pointspot">
+                <i class="fa-solid fa-house text-xl mb-1"></i><span>หน้าแรก</span>
+            </div>
+            <div class="flex flex-col items-center cursor-pointer text-gray-400 hover:text-pointspot">
+                <i class="fa-solid fa-gift text-xl mb-1"></i><span>ของรางวัล</span>
+            </div>
+            <div onclick="switchView('view-customer-home')" class="flex flex-col items-center relative cursor-pointer text-pointspot">
+                <div class="absolute -top-6 bg-pointspot text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+                    <i class="fa-solid fa-star text-2xl"></i>
+                </div>
+                <span class="mt-8 font-semibold">พอยท์</span>
+            </div>
+            <div class="flex flex-col items-center cursor-pointer text-gray-400 hover:text-pointspot">
+                <i class="fa-solid fa-ticket text-xl mb-1"></i><span>คูปองของฉัน</span>
+            </div>
+            <div class="flex flex-col items-center cursor-pointer text-gray-400 hover:text-pointspot">
+                <i class="fa-solid fa-ellipsis text-xl mb-1"></i><span>อื่นๆ</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-customer-profile" class="page bg-gray-50 min-h-screen max-w-md mx-auto relative shadow-xl overflow-hidden pb-20">
+        <div class="bg-pointspot text-white pt-6 pb-8 px-6 rounded-b-3xl shadow-md relative">
+            <button onclick="switchView('view-customer-home')" class="absolute top-6 left-4 text-white text-xl"><i class="fa-solid fa-bars"></i></button>
+            <div class="flex items-center gap-4 mt-8">
+                <div class="w-20 h-20 rounded-full bg-gray-300 flex items-center justify-center border-2 border-white text-3xl text-gray-500 overflow-hidden shadow">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <div class="flex-1">
+                    <h2 class="text-xl font-bold mb-1">Admin 1</h2>
+                    <p class="text-sm border-b border-gray-400 pb-2 mb-2">Pointspot ID : 12041011</p>
+                    <div class="text-sm flex flex-col gap-1">
+                        <p><i class="fa-solid fa-phone w-5"></i> +66 960392625</p>
+                        <p><i class="fa-regular fa-envelope w-5"></i> waons05@gmail.com</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-4 mt-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div onclick="switchView('view-customer-edit-profile')" class="px-4 py-4 border-b border-gray-100 flex items-center gap-4 text-gray-600 cursor-pointer hover:bg-gray-50">
+                    <i class="fa-regular fa-pen-to-square text-lg w-6 text-center text-gray-500"></i> แก้ไขโปรไฟล์
+                </div>
+                <div class="px-4 py-4 border-b border-gray-100 flex items-center gap-4 text-gray-600 cursor-pointer hover:bg-gray-50">
+                    <i class="fa-solid fa-location-dot text-lg w-6 text-center text-gray-500"></i> ที่อยู่
+                </div>
+                <div class="px-4 py-4 border-b border-gray-100 flex items-center gap-4 text-gray-600 cursor-pointer hover:bg-gray-50">
+                    <i class="fa-solid fa-phone text-lg w-6 text-center text-gray-500"></i> เปลี่ยนหมายเลขโทรศัพท์
+                </div>
+                <div class="px-4 py-4 border-b border-gray-100 flex items-center gap-4 text-gray-600 cursor-pointer hover:bg-gray-50">
+                    <i class="fa-solid fa-globe text-lg w-6 text-center text-gray-500"></i> Change language
+                </div>
+                <div class="px-4 py-4 border-b border-gray-100 flex items-center gap-4 text-gray-600 cursor-pointer hover:bg-gray-50">
+                    <i class="fa-regular fa-bell text-lg w-6 text-center text-gray-500"></i> ตั้งค่าการแจ้งเตือน
+                </div>
+                <div class="px-4 py-4 border-b border-gray-100 flex items-center gap-4 text-gray-600 cursor-pointer hover:bg-gray-50">
+                    <i class="fa-brands fa-line text-lg w-6 text-center text-gray-500"></i> ธุรกิจที่ติดตามผ่าน LINE
+                </div>
+                <div class="px-4 py-4 flex items-center gap-4 text-gray-600 cursor-pointer hover:bg-gray-50">
+                    <i class="fa-solid fa-ban text-lg w-6 text-center text-gray-500"></i> ธุรกิจที่เลิกติดตาม
+                </div>
+            </div>
+
+            <button onclick="switchView('view-login')" class="w-full mt-6 bg-white border border-red-500 text-red-500 font-semibold py-3 rounded-xl hover:bg-red-50 transition shadow-sm">
+                ออกจากระบบ
+            </button>
+        </div>
+    </div>
+
+    <div id="view-customer-edit-profile" class="page bg-white min-h-screen max-w-md mx-auto relative shadow-xl overflow-hidden pb-20">
+        <div class="bg-pointspot text-white h-14 flex items-center px-4 shadow relative">
+            <button onclick="switchView('view-customer-profile')" class="text-xl absolute left-4"><i class="fa-solid fa-chevron-left"></i></button>
+            <h1 class="font-semibold mx-auto">แก้ไขโปรไฟล์</h1>
+            <div class="w-8 h-8 rounded-full bg-gray-300 absolute right-4 flex items-center justify-center text-gray-500 overflow-hidden shadow">
+                <i class="fa-solid fa-user"></i>
+            </div>
+        </div>
+
+        <div class="text-center mt-6">
+            <div class="w-24 h-24 mx-auto rounded-full bg-gray-200 flex items-center justify-center text-4xl text-gray-400 mb-4">
+                <i class="fa-solid fa-user"></i>
+            </div>
+            <p class="text-pointspot text-sm">Pointspot ID : 12041011</p>
+            <p class="text-pointspot text-sm mt-1"><i class="fa-solid fa-phone"></i> +66 960392625</p>
+        </div>
+
+        <div class="px-6 mt-8 space-y-4">
+            <div>
+                <label class="block text-pointspot font-semibold text-sm mb-1">ชื่อ</label>
+                <div class="flex border border-gray-300 rounded-lg overflow-hidden focus-within:border-pointspot">
+                    <div class="bg-gray-50 px-3 flex items-center text-gray-500 border-r border-gray-300"><i class="fa-regular fa-user"></i></div>
+                    <input type="text" value="Admin" class="w-full p-2 outline-none text-gray-700">
+                </div>
+            </div>
+            <div>
+                <label class="block text-pointspot font-semibold text-sm mb-1">นามสกุล</label>
+                <div class="flex border border-gray-300 rounded-lg overflow-hidden focus-within:border-pointspot">
+                    <div class="bg-gray-50 px-3 flex items-center text-gray-500 border-r border-gray-300"><i class="fa-regular fa-user"></i></div>
+                    <input type="text" value="1" class="w-full p-2 outline-none text-gray-700">
+                </div>
+            </div>
+            <div>
+                <label class="block text-pointspot font-semibold text-sm mb-1">อีเมล</label>
+                <div class="flex border border-gray-300 rounded-lg overflow-hidden focus-within:border-pointspot">
+                    <div class="bg-gray-50 px-3 flex items-center text-gray-500 border-r border-gray-300"><i class="fa-regular fa-envelope"></i></div>
+                    <input type="email" value="waons05@gmail.com" class="w-full p-2 outline-none text-gray-700">
+                </div>
+            </div>
+            <div>
+                <label class="block text-pointspot font-semibold text-sm mb-1">เดือนเกิด</label>
+                <div class="flex gap-4">
+                    <select class="w-1/2 p-2 border border-gray-300 rounded-lg outline-none text-gray-700 bg-white">
+                        <option>มิถุนายน</option>
+                    </select>
+                    <select class="w-1/2 p-2 border border-gray-300 rounded-lg outline-none text-gray-700 bg-white">
+                        <option>2525</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-pointspot font-semibold text-sm mb-1">เพศ</label>
+                <div class="flex gap-2">
+                    <button class="flex-1 py-2 border border-gray-300 text-gray-400 rounded-lg hover:bg-gray-50">ชาย</button>
+                    <button class="flex-1 py-2 border border-gray-300 text-gray-400 rounded-lg hover:bg-gray-50">หญิง</button>
+                    <button class="flex-1 py-2 border-2 border-gray-800 text-gray-800 font-semibold rounded-lg bg-white shadow-sm">ไม่ระบุ</button>
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-gray-100 mt-6">
+                <button onclick="switchView('view-customer-profile')" class="w-full bg-[#00c853] text-white font-semibold py-3 rounded-lg hover:bg-green-600 transition shadow">
+                    บันทึก
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-admin" class="page bg-gray-100 min-h-screen w-full flex">
+        
+        <div class="w-64 bg-white shadow-lg h-screen sticky top-0 flex flex-col hidden md:flex">
+            <div class="p-6 flex items-center justify-center gap-2 border-b border-gray-100">
+                <div class="w-8 h-8 rounded-full border-2 border-pointspot flex justify-center items-center text-pointspot">
+                    <i class="fa-regular fa-star"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-pointspot tracking-wide">pointspot</h2>
+            </div>
+            
+            <div class="p-4 border-b border-gray-100">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-12 h-12 rounded-full bg-pink-200 flex items-center justify-center text-pink-700 relative">
+                        <i class="fa-solid fa-paw"></i>
+                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border border-white rounded-full"></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-pointspot leading-tight">LuckyShop24</h3>
+                        <p class="text-xs text-gray-400">Owner</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-down text-gray-400 ml-auto text-xs"></i>
+                </div>
+                <div class="mb-2">
+                    <div class="flex justify-between text-xs text-pointspot mb-1 font-semibold"><span>สมาชิก</span><span>1 สมาชิก</span></div>
+                    <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-cyan-500 h-2 rounded-full" style="width: 5%"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs text-pointspot mb-1 font-semibold"><span>รายการ</span><span>0 รายการ</span></div>
+                    <div class="w-full bg-gray-200 rounded-full h-2"></div>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto no-scrollbar py-2 text-pointspot font-semibold">
+                <a href="#" class="flex items-center gap-4 px-6 py-3 bg-gray-100 border-l-4 border-pointspot">
+                    <i class="fa-solid fa-house w-5 text-gray-500"></i> หน้าหลัก
+                </a>
+                <a href="#" class="flex items-center gap-4 px-6 py-3 hover:bg-gray-50">
+                    <i class="fa-solid fa-rss w-5 text-gray-500"></i> Activities
+                </a>
+                <a href="#" class="flex items-center justify-between px-6 py-3 hover:bg-gray-50">
+                    <div class="flex items-center gap-4"><i class="fa-solid fa-users w-5 text-gray-500"></i> สมาชิก</div>
+                    <i class="fa-solid fa-chevron-down text-xs text-gray-500"></i>
+                </a>
+                <a href="#" class="flex items-center justify-between px-6 py-3 hover:bg-gray-50">
+                    <div class="flex items-center gap-4"><i class="fa-solid fa-star w-5 text-gray-500"></i> พอยท์</div>
+                    <i class="fa-solid fa-chevron-down text-xs text-gray-500"></i>
+                </a>
+                <a href="#" class="flex items-center justify-between px-6 py-3 hover:bg-gray-50">
+                    <div class="flex items-center gap-4"><i class="fa-solid fa-ticket w-5 text-gray-500"></i> คูปอง / ของรางวัล</div>
+                    <i class="fa-solid fa-chevron-down text-xs text-gray-500"></i>
+                </a>
+                <a href="#" class="flex items-center justify-between px-6 py-3 hover:bg-gray-50">
+                    <div class="flex items-center gap-4"><i class="fa-solid fa-robot w-5 text-gray-500"></i> Automation</div>
+                    <i class="fa-solid fa-chevron-down text-xs text-gray-500"></i>
+                </a>
+                <a href="#" class="flex items-center justify-between px-6 py-3 hover:bg-gray-50">
+                    <div class="flex items-center gap-4"><i class="fa-solid fa-chart-bar w-5 text-gray-500"></i> รายงาน</div>
+                    <i class="fa-solid fa-chevron-down text-xs text-gray-500"></i>
+                </a>
+                <a href="#" class="flex items-center justify-between px-6 py-3 hover:bg-gray-50">
+                    <div class="flex items-center gap-4"><i class="fa-solid fa-gear w-5 text-gray-500"></i> ตั้งค่า</div>
+                    <i class="fa-solid fa-chevron-down text-xs text-gray-500"></i>
+                </a>
+            </div>
+            
+            <div class="p-4 border-t border-gray-100">
+                 <button onclick="switchView('view-login')" class="w-full border border-red-500 text-red-500 py-2 rounded font-semibold hover:bg-red-50 transition">ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col h-screen overflow-hidden">
+            <header class="bg-pointspot text-white h-14 flex items-center justify-between px-4 shadow z-10">
+                <div class="flex items-center gap-4">
+                    <button class="md:hidden text-xl"><i class="fa-solid fa-bars"></i></button>
+                    <h1 class="font-semibold hidden md:block"><i class="fa-solid fa-bars mr-3"></i> หน้าหลัก</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <i class="fa-solid fa-search text-lg cursor-pointer hover:text-gray-300"></i>
+                    <i class="fa-solid fa-file-lines text-lg cursor-pointer hover:text-gray-300"></i>
+                    <div class="bg-cyan-400 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow">20</div>
+                    <div class="bg-white text-pointspot rounded px-1.5 text-sm font-bold shadow-sm cursor-pointer">TH</div>
+                    <div class="w-8 h-8 rounded-full bg-pink-200 flex items-center justify-center text-pink-700 text-xs shadow-sm cursor-pointer border border-white">
+                        <i class="fa-solid fa-paw"></i>
+                    </div>
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto p-6 md:p-10 bg-white">
+                <div class="max-w-4xl mx-auto">
+                    <h1 class="text-3xl md:text-4xl font-bold text-pointspot text-center mb-10 mt-4">ยินดีต้อนรับเข้าสู่ระบบ Pointspot</h1>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition cursor-pointer flex flex-col h-56">
+                            <div class="flex-1 flex justify-center items-center bg-white">
+                                <i class="fa-solid fa-clock-rotate-left text-7xl text-pointspot"></i>
+                            </div>
+                            <div class="bg-gray-50 p-4 text-center border-t border-gray-200">
+                                <h3 class="font-bold text-pointspot text-sm">ประวัติการทำรายการ</h3>
+                                <p class="text-xs text-gray-400 mt-1">แสดงประวัติการทำรายการ</p>
+                            </div>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition cursor-pointer flex flex-col h-56">
+                            <div class="flex-1 flex justify-center items-center bg-white">
+                                <i class="fa-solid fa-share text-7xl text-pointspot"></i>
+                            </div>
+                            <div class="bg-gray-50 p-4 text-center border-t border-gray-200">
+                                <h3 class="font-bold text-pointspot text-sm">ส่งพอยท์ด่วน</h3>
+                                <p class="text-xs text-gray-400 mt-1">ส่งพอยท์แบบสะดวกและรวดเร็ว</p>
+                            </div>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition cursor-pointer flex flex-col h-56">
+                            <div class="flex-1 flex justify-center items-center bg-white">
+                                <i class="fa-solid fa-ticket text-7xl text-pointspot"></i>
+                            </div>
+                            <div class="bg-gray-50 p-4 text-center border-t border-gray-200">
+                                <h3 class="font-bold text-pointspot text-sm">ใช้งานคูปอง/ของรางวัล</h3>
+                                <p class="text-xs text-gray-400 mt-1">ใช้งานคูปอง/ของรางวัล</p>
+                            </div>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition cursor-pointer flex flex-col h-56">
+                            <div class="flex-1 flex justify-center items-center bg-white">
+                                <i class="fa-solid fa-user text-7xl text-pointspot"></i>
+                            </div>
+                            <div class="bg-gray-50 p-4 text-center border-t border-gray-200">
+                                <h3 class="font-bold text-pointspot text-sm">ข้อมูลสมาชิก</h3>
+                                <p class="text-xs text-gray-400 mt-1">ข้อมูลสมาชิก</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // ฟังก์ชันสำหรับเปลี่ยนหน้าหลัก
+        function switchView(viewId) {
+            // ซ่อนทุกหน้า
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            // แสดงหน้าที่ต้องการ
+            document.getElementById(viewId).classList.add('active');
+            // เลื่อนจอไปด้านบนสุดทุกครั้งที่เปลี่ยนหน้า
+            window.scrollTo(0,0);
+        }
+
+        // ฟังก์ชันสำหรับเปิด/ปิด เมนูด้านข้างของฝั่งลูกค้า
+        function toggleCustomerMenu() {
+            const menu = document.getElementById('customer-menu');
+            const menuContent = document.getElementById('customer-menu-content');
+            
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                menu.classList.add('flex');
+                setTimeout(() => {
+                    menuContent.classList.remove('-translate-x-full');
+                }, 10);
+            } else {
+                menuContent.classList.add('-translate-x-full');
+                setTimeout(() => {
+                    menu.classList.add('hidden');
+                    menu.classList.remove('flex');
+                }, 300);
+            }
+        }
+    </script>
 </body>
 </html>
