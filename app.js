@@ -7,7 +7,7 @@ if (typeof Html5QrcodeScanner === 'undefined') {
 function showLoading(title = "กำลังโหลด...") { Swal.fire({ title: title, allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }}); }
 
 function apiCall(action, payload) {
-  showLoading("กำลังประมวลผล...");
+  showLoading("Loading...");
   return fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action, payload }) })
   .then(res => res.json()).then(res => { Swal.close(); if (res.status === "error") throw new Error(res.message); return res.data; })
   .catch(err => { Swal.fire({ icon: "error", title: "ข้อผิดพลาด", text: err.message }); throw err; });
@@ -496,3 +496,4 @@ function handleAdminPage() {
       });
   });
 }
+
