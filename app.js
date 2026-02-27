@@ -18,7 +18,6 @@ function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
 document.addEventListener("DOMContentLoaded", () => {
   const path = window.location.pathname.toLowerCase();
   
-  // ตั้งค่าปีลิขสิทธิ์
   const yearEl = document.getElementById('copyright-year') || document.getElementById('year');
   if(yearEl) yearEl.textContent = new Date().getFullYear();
 
@@ -49,8 +48,19 @@ function handleLoginPage() {
         loginOtpForm.addEventListener("submit", (e) => {
             e.preventDefault(); const identifier = document.getElementById("otpIdentifier").value;
             apiCall("requestEmailOtp", { identifier }).then(otpRes => {
-                Swal.fire({ title: "ยืนยันรหัส OTP", html: `<p class="text-muted small">รหัสส่งไปที่อีเมลแล้ว</p><input id="swal-input-otp-login" class="form-control text-center fs-4 py-2" placeholder="รหัส 6 หลัก" maxlength="6">`, showCancelButton: true, confirmButtonText: "เข้าสู่ระบบ", preConfirm: () => document.getElementById("swal-input-otp-login").value })
-                .then(res => {
+                // [ปรับแก้ความสวยงาม Pop-up OTP เข้าสู่ระบบ]
+                Swal.fire({ 
+                    title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ยืนยันรหัส OTP</h4>', 
+                    html: `<p class="text-muted small mb-4">รหัสถูกส่งไปยังอีเมล/เบอร์โทรของคุณแล้ว</p>
+                           <input id="swal-input-otp-login" class="form-control text-center py-3 rounded-3 fw-bold" style="letter-spacing: 12px; font-size: 1.5rem; background:#f8f9fa;" placeholder="------" maxlength="6" autocomplete="off">`, 
+                    showCancelButton: true, 
+                    confirmButtonColor: '#3b4b5b',
+                    cancelButtonColor: '#e2e8f0',
+                    cancelButtonText: '<span class="text-dark fw-bold">ยกเลิก</span>',
+                    confirmButtonText: 'เข้าสู่ระบบ', 
+                    customClass: { popup: 'rounded-4 shadow-lg' },
+                    preConfirm: () => document.getElementById("swal-input-otp-login").value 
+                }).then(res => {
                     if(res.isConfirmed) {
                         apiCall("verifyEmailOtp", { identifier, otp: res.value, isForLogin: true }).then(data => {
                             sessionStorage.setItem("loggedInUser", JSON.stringify(data.user));
@@ -62,23 +72,74 @@ function handleLoginPage() {
         });
     }
 
-    // แก้ไข: ปุ่มลืมรหัสผ่าน
+    // [ปรับแก้ Pop-up ลืมรหัสผ่าน: ให้สวยงามและใช้ระบบ OTP ล้วนๆ]
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     if(forgotPasswordLink) {
         forgotPasswordLink.addEventListener('click', function(e) {
             e.preventDefault();
+            // ขั้นที่ 1: ขอเบอร์โทร
             Swal.fire({
-                title: 'ลืมรหัสผ่าน?',
-                text: "กรุณากรอกเบอร์โทรศัพท์ของคุณเพื่อรับลิงก์รีเซ็ต",
-                input: 'tel',
-                inputPlaceholder: '08XXXXXXXX',
-                icon: 'question',
+                title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ลืมรหัสผ่าน?</h4>',
+                html: `<p class="text-muted small mb-4">กรุณากรอกเบอร์โทรศัพท์เพื่อรับรหัส OTP</p>
+                       <input type="tel" id="swal-forgot-phone" class="form-control text-center fs-5 py-2 rounded-3" placeholder="08XXXXXXXX" maxlength="10">`,
                 showCancelButton: true,
                 confirmButtonColor: '#3b4b5b',
-                confirmButtonText: 'ส่งข้อความ'
+                cancelButtonColor: '#e2e8f0',
+                cancelButtonText: '<span class="text-dark fw-bold">ยกเลิก</span>',
+                confirmButtonText: 'ขอรหัส OTP',
+                customClass: { popup: 'rounded-4 shadow-lg' },
+                preConfirm: () => {
+                    const phone = document.getElementById('swal-forgot-phone').value;
+                    if(!phone || phone.length < 9) { Swal.showValidationMessage('กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง'); return false; }
+                    return phone;
+                }
             }).then((result) => {
-                if (result.isConfirmed && result.value) {
-                    Swal.fire({ icon: 'success', title: 'ส่งเรียบร้อย!', text: 'เราได้ส่งข้อความไปที่เบอร์ ' + result.value + ' แล้ว', confirmButtonColor: '#3b4b5b' });
+                if (result.isConfirmed) {
+                    const phone = result.value;
+                    // โค้ดส่ง OTP ของจริงจะอยู่ตรงนี้ (ปัจจุบันจำลองการส่ง)
+                    
+                    // ขั้นที่ 2: กรอก OTP แบบสวยๆ
+                    Swal.fire({
+                        title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ยืนยันรหัส OTP</h4>',
+                        html: `<p class="text-muted small mb-4">รหัส 6 หลักถูกส่งไปยังเบอร์ ${phone} แล้ว</p>
+                               <input type="text" id="swal-forgot-otp" class="form-control text-center py-3 rounded-3 fw-bold" style="letter-spacing: 12px; font-size: 1.5rem; background:#f8f9fa;" placeholder="------" maxlength="6" autocomplete="off">`,
+                        showCancelButton: true,
+                        confirmButtonColor: '#3b4b5b',
+                        cancelButtonColor: '#e2e8f0',
+                        cancelButtonText: '<span class="text-dark fw-bold">ยกเลิก</span>',
+                        confirmButtonText: 'ยืนยันรหัส',
+                        customClass: { popup: 'rounded-4 shadow-lg' },
+                        preConfirm: () => {
+                            const otp = document.getElementById('swal-forgot-otp').value;
+                            if(otp.length !== 6) { Swal.showValidationMessage('กรุณากรอกรหัส OTP ให้ครบ 6 หลัก'); return false; }
+                            return otp;
+                        }
+                    }).then((otpResult) => {
+                        if(otpResult.isConfirmed) {
+                            // ขั้นที่ 3: ตั้งรหัสผ่านใหม่
+                            Swal.fire({
+                                title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ตั้งรหัสผ่านใหม่</h4>',
+                                html: `<p class="text-muted small mb-4">กรุณาตั้งรหัสผ่านใหม่ที่จำได้ง่าย</p>
+                                       <input type="password" id="swal-new-pass" class="form-control mb-3 py-2 rounded-3 text-center" placeholder="รหัสผ่านใหม่">
+                                       <input type="password" id="swal-confirm-pass" class="form-control py-2 rounded-3 text-center" placeholder="ยืนยันรหัสผ่านใหม่">`,
+                                confirmButtonColor: '#3b4b5b',
+                                confirmButtonText: 'บันทึกรหัสผ่าน',
+                                customClass: { popup: 'rounded-4 shadow-lg' },
+                                preConfirm: () => {
+                                    const p1 = document.getElementById('swal-new-pass').value;
+                                    const p2 = document.getElementById('swal-confirm-pass').value;
+                                    if(!p1 || !p2) { Swal.showValidationMessage('กรุณากรอกรหัสผ่านให้ครบ'); return false; }
+                                    if(p1 !== p2) { Swal.showValidationMessage('รหัสผ่านไม่ตรงกัน'); return false; }
+                                    return p1;
+                                }
+                            }).then((passResult) => {
+                                if(passResult.isConfirmed) {
+                                    // โค้ดอัปเดตรหัสผ่านลงฐานข้อมูลจริงจะอยู่ตรงนี้
+                                    Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบ', confirmButtonColor: '#3b4b5b', customClass: { popup: 'rounded-4 shadow-lg' } });
+                                }
+                            });
+                        }
+                    });
                 }
             });
         });
@@ -86,12 +147,31 @@ function handleLoginPage() {
 }
 
 function handleRegisterPage() {
-    // แก้ไข: ปลดล็อกปุ่มเมื่อติ๊กยอมรับเงื่อนไข
     const policyCheckbox = document.getElementById("policyCheckbox");
     const registerBtn = document.getElementById("registerBtn");
     if (policyCheckbox && registerBtn) {
         policyCheckbox.addEventListener("change", function() {
             registerBtn.disabled = !this.checked;
+        });
+    }
+
+    // [เพิ่มใหม่: แสดง Pop-up นโยบายความเป็นส่วนตัว]
+    const viewPolicyLink = document.getElementById("viewPolicyLink");
+    if (viewPolicyLink) {
+        viewPolicyLink.addEventListener("click", function(e) {
+            e.preventDefault();
+            Swal.fire({
+                title: '<h5 class="fw-bold mb-0" style="color:#3b4b5b;">นโยบายความเป็นส่วนตัว</h5>',
+                html: `<div style="text-align: left; font-size: 0.9rem; color: #556677; max-height: 300px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 8px;" class="mb-2">
+                        <p class="mb-2"><strong>1. การเก็บรวบรวมข้อมูล:</strong> เราจะจัดเก็บข้อมูลพื้นฐานของท่าน เช่น ชื่อ เบอร์โทรศัพท์ และอีเมล เพื่อใช้ในระบบสมาชิก</p>
+                        <p class="mb-2"><strong>2. การใช้งานข้อมูล:</strong> ข้อมูลของท่านจะถูกนำไปใช้เพื่อจัดการสะสมพอยท์ แลกของรางวัล และการส่ง OTP เพื่อความปลอดภัย</p>
+                        <p class="mb-0"><strong>3. การรักษาความปลอดภัย:</strong> เราจะไม่เปิดเผยข้อมูลของท่านให้กับบุคคลที่สามโดยไม่ได้รับอนุญาต</p>
+                       </div>`,
+                icon: 'info',
+                confirmButtonColor: '#3b4b5b',
+                confirmButtonText: 'รับทราบ',
+                customClass: { popup: 'rounded-4 shadow-lg' }
+            });
         });
     }
 
@@ -118,7 +198,7 @@ function handleDashboardPage() {
 
 function renderDashboard(user, notifications, rewards) {
   const app = document.getElementById("app");
-  app.classList.remove("d-flex", "justify-content-center", "align-items-center"); // เอาคลาสจัดกลางตอนโหลดออก
+  app.classList.remove("d-flex", "justify-content-center", "align-items-center"); 
   const rewardsByCategory = rewards.reduce((acc, reward) => { (acc[reward.category] = acc[reward.category] || []).push(reward); return acc; }, {});
   
   if (!rewardsByCategory["โปรประจำสัปดาห์"]) rewardsByCategory["โปรประจำสัปดาห์"] = [{ isPlaceholder: true, name: "⏳ เร็วๆ นี้", description: "รอติดตามโปรโมชั่นสุดคุ้มได้ที่นี่" }];
@@ -236,13 +316,13 @@ function renderDashboard(user, notifications, rewards) {
         notifications.forEach((n) => { nHtml += `<li class="list-group-item px-1 py-3"><strong class="text-primary d-block mb-1 small">${new Date(n.timestamp).toLocaleDateString("th-TH")}</strong><span class="text-dark small">${n.message}</span></li>`; });
         nHtml += '</ul>';
     }
-    Swal.fire({ title: '<h5 class="fw-bold text-start">การแจ้งเตือน</h5>', html: nHtml, showConfirmButton: false, showCloseButton: true });
+    Swal.fire({ title: '<h5 class="fw-bold text-start">การแจ้งเตือน</h5>', html: nHtml, showConfirmButton: false, showCloseButton: true, customClass: { popup: 'rounded-4' } });
   });
 
   document.querySelectorAll(".redeem-btn").forEach(btn => {
       btn.addEventListener("click", function() {
-          Swal.fire({ title: "ยืนยันการแลกรางวัล?", text: `ต้องการแลก "${this.dataset.rewardName}" ใช่ไหม?`, icon: "question", showCancelButton: true, confirmButtonColor: "#10b981", confirmButtonText: "ยืนยัน" }).then(res => {
-              if (res.isConfirmed) apiCall("redeemReward", { memberPhone: cleanPhone, rewardId: this.dataset.rewardId }).then(() => Swal.fire("สำเร็จ", "แลกของรางวัลแล้ว กรุณาแคปหน้าจอแจ้งแอดมิน", "success").then(() => location.reload()));
+          Swal.fire({ title: "ยืนยันการแลกรางวัล?", text: `ต้องการแลก "${this.dataset.rewardName}" ใช่ไหม?`, icon: "question", showCancelButton: true, confirmButtonColor: "#10b981", confirmButtonText: "ยืนยัน", customClass: { popup: 'rounded-4' } }).then(res => {
+              if (res.isConfirmed) apiCall("redeemReward", { memberPhone: cleanPhone, rewardId: this.dataset.rewardId }).then(() => Swal.fire({title: "สำเร็จ", text: "แลกของรางวัลแล้ว กรุณาแคปหน้าจอแจ้งแอดมิน", icon: "success", customClass: { popup: 'rounded-4' }}).then(() => location.reload()));
           });
       });
   });
@@ -353,7 +433,6 @@ function handleAdminPage() {
         </div>
     `;
 
-  // แฮมเบอร์เกอร์เมนู
   document.getElementById("adminBurgerBtn").addEventListener("click", () => {
       document.getElementById("adminSidebar").classList.add("open");
       document.getElementById("adminOverlay").classList.add("show");
@@ -379,13 +458,13 @@ function handleAdminPage() {
         currentCustomerPhone = user.phone.replace(/'/g, '');
         document.getElementById("customerDetails").innerHTML = `<div><h6 class="fw-bold mb-0">${user.firstName} ${user.lastName}</h6><small class="text-muted">${currentCustomerPhone}</small></div><div class="text-end"><h4 class="text-primary mb-0">${user.totalPoints} <span class="fs-6">พอยท์</span></h4></div>`;
         document.getElementById("customerActions").classList.remove("d-none");
-      }).catch(() => Swal.fire("ไม่พบข้อมูล", "", "warning"));
+      }).catch(() => Swal.fire({title: "ไม่พบข้อมูล", icon: "warning", customClass: { popup: 'rounded-4' }}));
   };
   document.getElementById("searchBtn").addEventListener("click", searchAction);
 
   document.getElementById("pointsForm").addEventListener("submit", (e) => {
     e.preventDefault(); 
-    apiCall("managePoints", { memberPhone: currentCustomerPhone, pointsChange: parseInt(document.getElementById("pointsChange").value, 10), reason: document.getElementById("reason").value, adminPhone: adminUser.phone }).then(() => { Swal.fire("สำเร็จ", "", "success"); document.getElementById("pointsForm").reset(); searchAction(); });
+    apiCall("managePoints", { memberPhone: currentCustomerPhone, pointsChange: parseInt(document.getElementById("pointsChange").value, 10), reason: document.getElementById("reason").value, adminPhone: adminUser.phone }).then(() => { Swal.fire({title: "สำเร็จ", icon: "success", customClass: { popup: 'rounded-4' }}); document.getElementById("pointsForm").reset(); searchAction(); });
   });
 
   document.getElementById("addRewardForm").addEventListener("submit", (e) => {
@@ -394,10 +473,9 @@ function handleAdminPage() {
         document.querySelectorAll(".promo-day:checked").forEach(cb => selectedDays.push(cb.value));
     }
     const payload = { name: document.getElementById("rewardName").value, description: document.getElementById("rewardDesc").value, pointsRequired: parseInt(document.getElementById("rewardPoints").value, 10), cashRequired: parseInt(document.getElementById("rewardCash").value, 10) || 0, category: document.getElementById("rewardCategory").value, isNew: true, adminPhone: adminUser.phone, activeDays: selectedDays.join(",") };
-    apiCall("addReward", payload).then(() => { Swal.fire("สำเร็จ", "", "success"); document.getElementById("addRewardForm").reset(); document.getElementById("daySelectorContainer").classList.add("d-none"); });
+    apiCall("addReward", payload).then(() => { Swal.fire({title: "สำเร็จ", icon: "success", customClass: { popup: 'rounded-4' }}); document.getElementById("addRewardForm").reset(); document.getElementById("daySelectorContainer").classList.add("d-none"); });
   });
 
-  // แก้ไข: เพิ่มระบบสแกนกล้อง QR Code
   document.getElementById("scanBarcodeBtn").addEventListener("click", () => {
       Swal.fire({
           title: 'สแกน QR Code ลูกค้า',
@@ -405,16 +483,15 @@ function handleAdminPage() {
           showCancelButton: true,
           showConfirmButton: false,
           cancelButtonText: 'ปิดกล้อง',
+          customClass: { popup: 'rounded-4' },
           didOpen: () => {
               const html5QrcodeScanner = new Html5QrcodeScanner("admin-qr-reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
               html5QrcodeScanner.render((decodedText) => {
-                  document.getElementById("searchPhone").value = decodedText; // เอาค่าที่สแกนได้ไปใส่ในช่องค้นหา
-                  html5QrcodeScanner.clear(); // ปิดกล้อง
-                  Swal.close(); // ปิด Pop-up
-                  searchAction(); // สั่งให้ค้นหาออโต้ทันที
-              }, (error) => {
-                  // ปล่อยว่างไว้เพื่อไม่ให้ Console แดงเวลากำลังหา QR
-              });
+                  document.getElementById("searchPhone").value = decodedText;
+                  html5QrcodeScanner.clear(); 
+                  Swal.close(); 
+                  searchAction();
+              }, (error) => {});
           }
       });
   });
