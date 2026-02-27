@@ -3,85 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LuckyShop24 - สมัครสมาชิก</title>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <style>
-        body { font-family: 'Kanit', sans-serif; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
-        .auth-card { background: white; border-radius: 24px; padding: 2.5rem; width: 100%; max-width: 450px; }
-        .hover-scale { transition: transform 0.2s; }
-        .hover-scale:hover { transform: scale(1.02); }
-    </style>
+    <title>ลงทะเบียนสมาชิก | LuckyShop24</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Prompt', sans-serif; }</style>
 </head>
-<body>
-    <div class="container d-flex flex-column align-items-center justify-content-center min-vh-100 py-5">
-        <div class="auth-card shadow-lg mb-4">
-            <div class="text-center mb-4">
-                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 70px; height: 70px; font-size: 2rem; background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;">
-                    <i class="bi bi-person-plus-fill"></i>
-                </div>
-                <h2 class="fw-bold text-dark">สมัครสมาชิกใหม่</h2>
-                <p class="text-muted">สร้างบัญชีผู้ใช้ LuckyPository</p>
-            </div>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen py-8 px-4">
 
-            <form id="registerForm">
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="firstName" placeholder="ชื่อ" required style="border-radius: 12px;">
-                            <label for="firstName" class="text-muted">ชื่อ</label>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="lastName" placeholder="นามสกุล" required style="border-radius: 12px;">
-                            <label for="lastName" class="text-muted">นามสกุล</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-floating mb-3">
-                    <input type="tel" class="form-control" id="phone" placeholder="เบอร์โทรศัพท์" required style="border-radius: 12px;">
-                    <label for="phone" class="text-muted"><i class="bi bi-telephone-fill me-2"></i>เบอร์โทรศัพท์</label>
-                </div>
-                <div class="form-floating mb-3">
-                    <input type="email" class="form-control" id="email" placeholder="อีเมล (สำหรับรับ OTP)" required style="border-radius: 12px;">
-                    <label for="email" class="text-muted"><i class="bi bi-envelope-fill me-2"></i>อีเมล (สำคัญ: ใช้รับ OTP)</label>
-                </div>
-                <div class="form-floating mb-3">
-                    <input type="password" class="form-control" id="password" placeholder="รหัสผ่าน" required style="border-radius: 12px;">
-                    <label for="password" class="text-muted"><i class="bi bi-lock-fill me-2"></i>รหัสผ่าน</label>
-                </div>
-                <div class="form-floating mb-3">
-                    <input type="password" class="form-control" id="confirmPassword" placeholder="ยืนยันรหัสผ่าน" required style="border-radius: 12px;">
-                    <label for="confirmPassword" class="text-muted"><i class="bi bi-lock-fill me-2"></i>ยืนยันรหัสผ่าน</label>
-                </div>
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
+        
+        <div class="bg-slate-700 text-white px-6 py-8 text-center relative">
+            <a href="login.html" class="absolute top-4 left-4 text-slate-300 hover:text-white">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <div class="w-16 h-16 mx-auto bg-white rounded-full flex items-center justify-center mb-3 shadow-md">
+                <i class="fa-solid fa-user-plus text-2xl text-slate-700"></i>
+            </div>
+            <h1 class="text-2xl font-bold tracking-wide">สมัครสมาชิกใหม่</h1>
+            <p class="text-slate-300 text-sm mt-1">กรอกข้อมูลเพื่อรับสิทธิพิเศษมากมาย</p>
+        </div>
+
+        <div class="p-6 md:p-8">
+            <form action="otp.html" method="GET" class="space-y-5">
                 
-                <div class="form-check mb-4 mt-3">
-                    <input type="checkbox" class="form-check-input" id="policyCheckbox">
-                    <label class="form-check-label small text-muted" for="policyCheckbox">
-                        ฉันได้อ่านและยอมรับ <a href="#" id="viewPolicyLink" class="fw-bold text-decoration-none" style="color: #4f46e5;">นโยบายความเป็นส่วนตัว</a>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์ (ล็อกไว้)</label>
+                    <div class="flex bg-gray-100 border border-gray-200 rounded-lg overflow-hidden cursor-not-allowed">
+                        <span class="px-4 py-3 bg-gray-200 text-gray-500 text-sm font-medium border-r border-gray-200">+66</span>
+                        <input type="text" value="089392625" readonly class="w-full px-3 py-3 bg-transparent text-gray-600 outline-none cursor-not-allowed font-medium">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อ</label>
+                        <input type="text" required placeholder="ชื่อจริง" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-800">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">นามสกุล</label>
+                        <input type="text" required placeholder="นามสกุล" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-800">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">อีเมล (สำหรับรับใบเสร็จ/OTP)</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-regular fa-envelope text-gray-400"></i>
+                        </div>
+                        <input type="email" required placeholder="example@gmail.com" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-800">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">วันเกิด</label>
+                    <input type="date" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-800 bg-white">
+                </div>
+
+                <div class="flex items-start mt-6">
+                    <div class="flex items-center h-5">
+                        <input type="checkbox" required class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                    </div>
+                    <label class="ml-2 text-sm text-gray-600">
+                        ฉันยอมรับ <a href="#" class="text-blue-600 hover:underline">เงื่อนไขการให้บริการ</a> และ <a href="#" class="text-blue-600 hover:underline">นโยบายความเป็นส่วนตัว</a> ของ LuckyShop24
                     </label>
                 </div>
 
-                <button type="submit" id="registerBtn" class="btn btn-primary w-100 py-3 rounded-pill fw-bold shadow-sm hover-scale" style="background: #4f46e5; border: none;" disabled>
-                    <i class="bi bi-check-circle-fill me-2"></i>ยืนยันการสมัครสมาชิก
+                <button type="submit" class="w-full mt-2 bg-slate-700 hover:bg-slate-800 text-white font-medium py-3 rounded-lg shadow-md transition duration-200">
+                    ดำเนินการต่อ (รับรหัส OTP)
                 </button>
             </form>
-
-            <div class="text-center mt-4 text-muted small">
-                มีบัญชีอยู่แล้ว? <a href="index.html" class="text-decoration-none fw-bold ms-1" style="color: #4f46e5;">เข้าสู่ระบบเลย</a>
-            </div>
         </div>
-
-        <footer class="text-center text-muted small pb-3">
-            &copy; <span id="copyright-year"></span> <strong>LuckyShop24</strong>. All rights reserved.
-        </footer>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="app.js"></script>
 </body>
 </html>
