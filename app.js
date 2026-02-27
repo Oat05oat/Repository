@@ -1,23 +1,34 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwz_WIhmE84bYpcTkMrE6tK5J3SQDlxDH3W5Dv3Pq3P7kWxVxegU5RNp0x-QmSCcsHspw/exec"; // << เปลี่ยน URL ด้วย
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwz_WIhmE84bYpcTkMrE6tK5J3SQDlxDH3W5Dv3Pq3P7kWxVxegU5RNp0x-QmSCcsHspw/exec"; 
 
-if (typeof Html5QrcodeScanner === 'undefined') {
-    const script = document.createElement('script'); script.src = "https://unpkg.com/html5-qrcode"; document.head.appendChild(script);
+// ตรวจสอบ Library สแกน QR Code
+if (typeof Html5Qrcode === 'undefined') {
+    const script = document.createElement('script'); 
+    script.src = "https://unpkg.com/html5-qrcode"; 
+    document.head.appendChild(script);
 }
 
-function showLoading(title = "กำลังโหลด...") { Swal.fire({ title: title, allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }}); }
+function showLoading(title = "กำลังโหลด...") { 
+    Swal.fire({ title: title, allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }}); 
+}
 
 function apiCall(action, payload) {
-  showLoading("Loading...");
+  showLoading("กำลังประมวลผล...");
   return fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action, payload }) })
-  .then(res => res.json()).then(res => { Swal.close(); if (res.status === "error") throw new Error(res.message); return res.data; })
-  .catch(err => { Swal.fire({ icon: "error", title: "ข้อผิดพลาด", text: err.message }); throw err; });
+  .then(res => res.json()).then(res => { 
+      Swal.close(); 
+      if (res.status === "error") throw new Error(res.message); 
+      return res.data; 
+  })
+  .catch(err => { 
+      Swal.fire({ icon: "error", title: "ข้อผิดพลาด", text: err.message }); 
+      throw err; 
+  });
 }
 
 function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
 
 document.addEventListener("DOMContentLoaded", () => {
   const path = window.location.pathname.toLowerCase();
-  
   const yearEl = document.getElementById('copyright-year') || document.getElementById('year');
   if(yearEl) yearEl.textContent = new Date().getFullYear();
 
@@ -27,17 +38,23 @@ document.addEventListener("DOMContentLoaded", () => {
   else handleLoginPage();
 });
 
-// === Login & Register ===
+// ==========================================
+// 1. หน้า Login & ลืมรหัสผ่าน
+// ==========================================
 function handleLoginPage() {
     const rememberedUser = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
-    if (rememberedUser) { window.location.href = JSON.parse(rememberedUser).isAdmin ? "admin.html" : "dashboard.html"; return; }
+    if (rememberedUser) { 
+        window.location.href = JSON.parse(rememberedUser).isAdmin ? "admin.html" : "dashboard.html"; 
+        return; 
+    }
 
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {
         loginForm.addEventListener("submit", (e) => {
             e.preventDefault();
             apiCall("login", { phone: document.getElementById("phone").value, hashedPassword: hashPassword(document.getElementById("password").value) }).then(data => {
-                if (document.getElementById("rememberMe").checked) localStorage.setItem("loggedInUser", JSON.stringify(data.user)); else sessionStorage.setItem("loggedInUser", JSON.stringify(data.user));
+                if (document.getElementById("rememberMe").checked) localStorage.setItem("loggedInUser", JSON.stringify(data.user)); 
+                else sessionStorage.setItem("loggedInUser", JSON.stringify(data.user));
                 window.location.href = data.user.isAdmin ? "admin.html" : "dashboard.html";
             });
         });
@@ -46,16 +63,15 @@ function handleLoginPage() {
     const loginOtpForm = document.getElementById("loginOtpForm");
     if (loginOtpForm) {
         loginOtpForm.addEventListener("submit", (e) => {
-            e.preventDefault(); const identifier = document.getElementById("otpIdentifier").value;
-            apiCall("requestEmailOtp", { identifier }).then(otpRes => {
+            e.preventDefault(); 
+            const identifier = document.getElementById("otpIdentifier").value;
+            apiCall("requestEmailOtp", { identifier }).then(() => {
                 Swal.fire({ 
-                    title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ยืนยันรหัส OTP</h4>', 
-                    html: `<p class="text-muted small mb-4">รหัสถูกส่งไปยังอีเมล/เบอร์โทรของคุณแล้ว</p>
-                           <input id="swal-input-otp-login" class="form-control text-center py-3 rounded-3 fw-bold" style="letter-spacing: 12px; font-size: 1.5rem; background:#f8f9fa;" placeholder="------" maxlength="6" autocomplete="off">`, 
+                    title: '<h4 class="fw-bold mb-0">ยืนยันรหัส OTP</h4>', 
+                    html: `<p class="text-muted small mb-4">รหัสถูกส่งไปยังอีเมลของคุณแล้ว</p>
+                           <input id="swal-input-otp-login" class="form-control text-center py-3 rounded-3 fw-bold" style="letter-spacing: 12px; font-size: 1.5rem; background:#f8f9fa;" placeholder="------" maxlength="6">`, 
                     showCancelButton: true, 
                     confirmButtonColor: '#3b4b5b',
-                    cancelButtonColor: '#e2e8f0',
-                    cancelButtonText: '<span class="text-dark fw-bold">ยกเลิก</span>',
                     confirmButtonText: 'เข้าสู่ระบบ', 
                     customClass: { popup: 'rounded-4 shadow-lg' },
                     preConfirm: () => document.getElementById("swal-input-otp-login").value 
@@ -71,19 +87,16 @@ function handleLoginPage() {
         });
     }
 
-    // [แก้ไข: ปุ่มลืมรหัสผ่าน ส่ง OTP เข้าอีเมลแทน SMS]
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     if(forgotPasswordLink) {
         forgotPasswordLink.addEventListener('click', function(e) {
             e.preventDefault();
             Swal.fire({
-                title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ลืมรหัสผ่าน?</h4>',
-                html: `<p class="text-muted small mb-4">กรุณากรอกเบอร์โทรศัพท์ที่ลงทะเบียนไว้<br>ระบบจะส่ง OTP ไปยัง <b>อีเมล</b> ที่ผูกกับเบอร์นี้</p>
+                title: '<h4 class="fw-bold mb-0">ลืมรหัสผ่าน?</h4>',
+                html: `<p class="text-muted small mb-4">ระบุเบอร์โทรเพื่อรับ OTP ทางอีเมลที่ผูกไว้</p>
                        <input type="tel" id="swal-forgot-phone" class="form-control text-center fs-5 py-2 rounded-3" placeholder="08XXXXXXXX" maxlength="10">`,
                 showCancelButton: true,
                 confirmButtonColor: '#3b4b5b',
-                cancelButtonColor: '#e2e8f0',
-                cancelButtonText: '<span class="text-dark fw-bold">ยกเลิก</span>',
                 confirmButtonText: 'ขอรหัส OTP',
                 customClass: { popup: 'rounded-4 shadow-lg' },
                 preConfirm: () => {
@@ -94,57 +107,36 @@ function handleLoginPage() {
             }).then((result) => {
                 if (result.isConfirmed) {
                     const phone = result.value;
-                    
-                    // เรียก API ส่ง OTP ไปที่อีเมลโดยอ้างอิงจากเบอร์โทร
                     apiCall("requestEmailOtp", { identifier: phone, type: "forgot_password" }).then(() => {
-                        
                         Swal.fire({
-                            title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ยืนยันรหัส OTP</h4>',
-                            html: `<p class="text-muted small mb-4">รหัส 6 หลักถูกส่งไปยัง<b>อีเมล</b>ที่ผูกกับเบอร์ ${phone} แล้ว</p>
-                                   <input type="text" id="swal-forgot-otp" class="form-control text-center py-3 rounded-3 fw-bold" style="letter-spacing: 12px; font-size: 1.5rem; background:#f8f9fa;" placeholder="------" maxlength="6" autocomplete="off">`,
+                            title: '<h4 class="fw-bold mb-0">ยืนยันรหัส OTP</h4>',
+                            html: `<p class="text-muted small mb-4">รหัส 6 หลักส่งไปที่อีเมลของคุณแล้ว</p>
+                                   <input type="text" id="swal-forgot-otp" class="form-control text-center py-3 rounded-3 fw-bold" style="letter-spacing: 12px; font-size: 1.5rem; background:#f8f9fa;" placeholder="------" maxlength="6">`,
                             showCancelButton: true,
                             confirmButtonColor: '#3b4b5b',
-                            cancelButtonColor: '#e2e8f0',
-                            cancelButtonText: '<span class="text-dark fw-bold">ยกเลิก</span>',
                             confirmButtonText: 'ยืนยันรหัส',
                             customClass: { popup: 'rounded-4 shadow-lg' },
-                            preConfirm: () => {
-                                const otp = document.getElementById('swal-forgot-otp').value;
-                                if(otp.length !== 6) { Swal.showValidationMessage('กรุณากรอกรหัส OTP ให้ครบ 6 หลัก'); return false; }
-                                return otp;
-                            }
+                            preConfirm: () => document.getElementById('swal-forgot-otp').value
                         }).then((otpResult) => {
                             if(otpResult.isConfirmed) {
-                                const otpCode = otpResult.value;
-                                
-                                // ยืนยัน OTP
-                                apiCall("verifyEmailOtp", { identifier: phone, otp: otpCode, isForLogin: false }).then(() => {
-                                    
-                                    // ถ้า OTP ถูก ให้เด้งหน้าตั้งรหัสผ่านใหม่
-                                    Swal.fire({
-                                        title: '<h4 class="fw-bold mb-0" style="color:#3b4b5b;">ตั้งรหัสผ่านใหม่</h4>',
-                                        html: `<p class="text-muted small mb-4">กรุณาตั้งรหัสผ่านใหม่ที่จำได้ง่าย</p>
-                                               <input type="password" id="swal-new-pass" class="form-control mb-3 py-2 rounded-3 text-center" placeholder="รหัสผ่านใหม่">
-                                               <input type="password" id="swal-confirm-pass" class="form-control py-2 rounded-3 text-center" placeholder="ยืนยันรหัสผ่านใหม่">`,
-                                        confirmButtonColor: '#3b4b5b',
-                                        confirmButtonText: 'บันทึกรหัสผ่าน',
-                                        customClass: { popup: 'rounded-4 shadow-lg' },
-                                        preConfirm: () => {
-                                            const p1 = document.getElementById('swal-new-pass').value;
-                                            const p2 = document.getElementById('swal-confirm-pass').value;
-                                            if(!p1 || !p2) { Swal.showValidationMessage('กรุณากรอกรหัสผ่านให้ครบ'); return false; }
-                                            if(p1 !== p2) { Swal.showValidationMessage('รหัสผ่านไม่ตรงกัน'); return false; }
-                                            return p1;
-                                        }
-                                    }).then((passResult) => {
-                                        if(passResult.isConfirmed) {
-                                            const newPassword = passResult.value;
-                                            // ยิง API บันทึกรหัสผ่านใหม่ลงฐานข้อมูล
-                                            apiCall("resetPassword", { phone: phone, newHashedPassword: hashPassword(newPassword) }).then(() => {
-                                                Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบ', confirmButtonColor: '#3b4b5b', customClass: { popup: 'rounded-4 shadow-lg' } });
-                                            });
-                                        }
-                                    });
+                                Swal.fire({
+                                    title: '<h4 class="fw-bold mb-0">ตั้งรหัสผ่านใหม่</h4>',
+                                    html: `<input type="password" id="swal-new-pass" class="form-control mb-3 py-2 rounded-3 text-center" placeholder="รหัสผ่านใหม่">
+                                           <input type="password" id="swal-confirm-pass" class="form-control py-2 rounded-3 text-center" placeholder="ยืนยันรหัสผ่านใหม่">`,
+                                    confirmButtonColor: '#3b4b5b',
+                                    confirmButtonText: 'บันทึก',
+                                    preConfirm: () => {
+                                        const p1 = document.getElementById('swal-new-pass').value;
+                                        const p2 = document.getElementById('swal-confirm-pass').value;
+                                        if(p1 !== p2) { Swal.showValidationMessage('รหัสผ่านไม่ตรงกัน'); return false; }
+                                        return p1;
+                                    }
+                                }).then((passResult) => {
+                                    if(passResult.isConfirmed) {
+                                        apiCall("resetPassword", { phone: phone, newHashedPassword: hashPassword(passResult.value) }).then(() => {
+                                            Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว', customClass: { popup: 'rounded-4' } });
+                                        });
+                                    }
                                 });
                             }
                         });
@@ -155,6 +147,9 @@ function handleLoginPage() {
     }
 }
 
+// ==========================================
+// 2. หน้าสมัครสมาชิก
+// ==========================================
 function handleRegisterPage() {
     const policyCheckbox = document.getElementById("policyCheckbox");
     const registerBtn = document.getElementById("registerBtn");
@@ -169,24 +164,15 @@ function handleRegisterPage() {
         viewPolicyLink.addEventListener("click", function(e) {
             e.preventDefault();
             Swal.fire({
-                title: '<h5 class="fw-bold mb-0" style="color:#3b4b5b;">นโยบายความเป็นส่วนตัว</h5>',
-                html: `<div style="text-align: left; font-size: 0.9rem; color: #556677; max-height: 300px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 8px;" class="mb-2">
-                        <p class="mb-2"><strong>1. การเก็บรวบรวมข้อมูล:</strong> เราจะจัดเก็บข้อมูลพื้นฐานที่จำเป็นของท่าน ได้แก่ ชื่อ-นามสกุล, หมายเลขโทรศัพท์มือถือ และที่อยู่อีเมล ที่ท่านได้ระบุไว้ในขั้นตอนการสมัครสมาชิก เพื่อใช้ในการระบุตัวตนและสร้างบัญชีผู้ใช้งานในระบบ</p>
-                        <p class="mb-2"><strong>2. การใช้งานข้อมูล:</strong> ข้อมูลของท่านจะถูกนำไปใช้ภายใต้วัตถุประสงค์ดังต่อไปนี้เท่านั้น:
-
-เพื่อใช้ในการคำนวณและจัดการ สะสมแต้ม (Points) จากยอดการใช้บริการ
-
-เพื่อใช้ในการตรวจสอบสิทธิ์และดำเนินการ แลกของรางวัลหรือคูปองส่วนลด
-
-เพื่อใช้ในการส่งรหัส OTP (One-Time Password) ผ่านอีเมลหรือ SMS เพื่อยืนยันตัวตนและรักษาความปลอดภัยในการเข้าสู่ระบบหรือเปลี่ยนรหัสผ่าน</p>
-                        <p class="mb-0"><strong>3. การรักษาความปลอดภัย:</strong> เราให้ความสำคัญกับการรักษาความปลอดภัยข้อมูลของท่านเป็นอันดับหนึ่ง โดยมีมาตรการป้องกันการเข้าถึงข้อมูลโดยไม่ได้รับอนุญาต และ เราขอรับรองว่าจะไม่เปิดเผย ขาย หรือเผยแพร่ข้อมูลส่วนบุคคลของท่านให้กับบุคคลที่สาม หรือองค์กรอื่นๆ เพื่อวัตถุประสงค์ทางการค้าโดยไม่ได้รับความยินยอมจากท่านล่วงหน้า</p>
-                        <p class="mb-0"><strong>4. การรักษาความปลอดภัย:</strong> ท่านมีสิทธิ์ในการขอเข้าถึง ตรวจสอบ หรือขอให้ปรับปรุงข้อมูลอีเมลให้เป็นปัจจุบันผ่านเมนู "แก้ไขข้อมูลส่วนตัว" ในระบบ ทั้งนี้ หากต้องการเปลี่ยนแปลงหมายเลขโทรศัพท์ที่เป็นรหัสสมาชิกหลัก ท่านสามารถติดต่อแอดมินผ่านช่องทางที่กำหนดเพื่อดำเนินการยืนยันตัวตนต่อไป</p>
+                title: '<h5 class="fw-bold">นโยบายความเป็นส่วนตัว</h5>',
+                html: `<div style="text-align: left; font-size: 0.9rem; color: #556677; max-height: 300px; overflow-y: auto; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <p><strong>1. การเก็บรวบรวมข้อมูล:</strong> เราจะจัดเก็บข้อมูลพื้นฐานของท่าน เช่น ชื่อ เบอร์โทรศัพท์ และอีเมล เพื่อใช้ในระบบสมาชิก</p>
+                        <p><strong>2. การใช้งานข้อมูล:</strong> ข้อมูลของท่านจะถูกนำไปใช้เพื่อจัดการสะสมพอยท์ แลกของรางวัล และการส่ง OTP เพื่อความปลอดภัย</p>
+                        <p><strong>3. การรักษาความปลอดภัย:</strong> เราจะไม่เปิดเผยข้อมูลของท่านให้กับบุคคลที่สามโดยไม่ได้รับอนุญาต</p>
                        </div>`,
-                       </div>`,
-                icon: 'info',
                 confirmButtonColor: '#3b4b5b',
                 confirmButtonText: 'รับทราบ',
-                customClass: { popup: 'rounded-4 shadow-lg' }
+                customClass: { popup: 'rounded-4' }
             });
         });
     }
@@ -197,530 +183,306 @@ function handleRegisterPage() {
             e.preventDefault();
             const pass = document.getElementById("password").value;
             if (pass !== document.getElementById("confirmPassword").value) return Swal.fire("ผิดพลาด", "รหัสผ่านไม่ตรงกัน", "error");
-            apiCall("register", { firstName: document.getElementById("firstName").value, lastName: document.getElementById("lastName").value, phone: document.getElementById("phone").value, email: document.getElementById("email").value, hashedPassword: hashPassword(pass) })
-            .then(() => Swal.fire("สำเร็จ!", "สมัครสมาชิกสำเร็จ", "success").then(() => window.location.href = "index.html"));
+            apiCall("register", { 
+                firstName: document.getElementById("firstName").value, 
+                lastName: document.getElementById("lastName").value, 
+                phone: document.getElementById("phone").value, 
+                email: document.getElementById("email").value, 
+                hashedPassword: hashPassword(pass) 
+            }).then(() => Swal.fire("สำเร็จ!", "สมัครสมาชิกสำเร็จ", "success").then(() => window.location.href = "index.html"));
         });
     }
 }
 
-// === CUSTOMER DASHBOARD ===
+// ==========================================
+// 3. หน้าลูกค้า (Dashboard)
+// ==========================================
 window.showHistoryReward = function(reason, date, refCode, status) {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(refCode)}`;
     const isUsed = status === 'used';
-    const statusBadge = isUsed 
-        ? '<h4 class="fw-bold text-success mb-0"><i class="bi bi-check-circle-fill"></i> ถูกใช้งานแล้ว</h4>' 
-        : '<h4 class="fw-bold text-warning mb-0"><i class="bi bi-hourglass-split"></i> รอแอดมินสแกนใช้งาน</h4>';
-        
+    
     Swal.fire({
-        title: '<h5 class="fw-bold text-primary mb-0"><i class="bi bi-gift"></i> รายละเอียดของรางวัล</h5>',
+        title: '<h5 class="fw-bold text-primary mb-0"><i class="bi bi-gift"></i> ของรางวัลของคุณ</h5>',
         html: `
             <div class="mt-3 p-4 bg-light rounded-4 border">
                 <h6 class="text-muted small mb-2">วันที่แลก: ${date}</h6>
                 <h5 class="fw-bold text-dark mb-4">${reason}</h5>
-                
                 <div class="text-center mb-4">
-                    <img src="${qrUrl}" alt="QR Code" class="img-fluid border p-2 bg-white rounded-3 shadow-sm" style="width:160px; height:160px; ${isUsed ? 'opacity:0.2; filter:grayscale(100%);' : ''}">
+                    <img src="${qrUrl}" class="img-fluid border p-2 bg-white rounded-3" style="width:160px; ${isUsed ? 'opacity:0.2; filter:grayscale(100%);' : ''}">
                 </div>
-
                 <div class="p-3 border border-2 border-secondary rounded-3 bg-white" style="border-style: dashed !important;">
-                    <small class="text-muted d-block mb-1">รหัสคูปอง (สแกนหรือแจ้งแอดมิน)</small>
-                    <h3 class="fw-bold text-dark mb-0 tracking-widest">${refCode}</h3>
+                    <small class="text-muted d-block mb-1">รหัสคูปอง</small>
+                    <h3 class="fw-bold text-dark mb-0">${refCode}</h3>
                 </div>
-                
-                <div class="mt-4 p-2 rounded-3 ${isUsed ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10'}">
-                    ${statusBadge}
+                <div class="mt-4">
+                    ${isUsed ? '<span class="badge bg-success p-2">ใช้งานแล้ว</span>' : '<span class="badge bg-warning p-2 text-dark">รอใช้งาน</span>'}
                 </div>
             </div>
-            ${!isUsed ? '<p class="text-danger fw-bold mt-3 mb-0"><i class="bi bi-camera"></i> แคปหน้าจอนี้ให้แอดมินสแกนรับของได้เลย</p>' : ''}
+            ${!isUsed ? '<p class="text-danger fw-bold mt-3 mb-0">แคปหน้าจอนี้ให้แอดมินสแกน</p>' : ''}
         `,
         confirmButtonColor: '#3b4b5b',
-        confirmButtonText: 'ปิดหน้าต่าง',
+        confirmButtonText: 'ปิด',
         customClass: { popup: 'rounded-4 shadow-lg' }
     });
 };
 
 function handleDashboardPage() {
-  const userStr = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
-  if (!userStr) { window.location.href = "index.html"; return; }
-  const loggedInUser = JSON.parse(userStr);
-  if (loggedInUser.isAdmin) { window.location.href = "admin.html"; return; }
-  apiCall("getFullDashboardData", { phone: loggedInUser.phone }).then(data => renderDashboard(data.user, data.notifications, data.rewards)).catch(() => window.location.href = "index.html");
+    const userStr = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
+    if (!userStr) { window.location.href = "index.html"; return; }
+    const loggedInUser = JSON.parse(userStr);
+    apiCall("getFullDashboardData", { phone: loggedInUser.phone }).then(data => renderDashboard(data.user, data.notifications, data.rewards));
 }
 
 function renderDashboard(user, notifications, rewards) {
-  const app = document.getElementById("app");
-  app.classList.remove("d-flex", "justify-content-center", "align-items-center"); 
-  const rewardsByCategory = rewards.reduce((acc, reward) => { (acc[reward.category] = acc[reward.category] || []).push(reward); return acc; }, {});
-  
-  if (!rewardsByCategory["โปรประจำสัปดาห์"]) rewardsByCategory["โปรประจำสัปดาห์"] = [{ isPlaceholder: true, name: "⏳ เร็วๆ นี้", description: "รอติดตามโปรโมชั่นสุดคุ้มได้ที่นี่" }];
-  
-  const cleanPhone = user.phone.replace(/'/g, ''); 
-  const firstLetter = user.firstName.charAt(0).toUpperCase();
-  const currentDayStr = new Date().getDay().toString();
+    const app = document.getElementById("app");
+    app.classList.remove("d-flex", "justify-content-center", "align-items-center");
+    const rewardsByCategory = rewards.reduce((acc, r) => { (acc[r.category] = acc[r.category] || []).push(r); return acc; }, {});
+    const cleanPhone = user.phone.replace(/'/g, '');
+    const currentDay = new Date().getDay().toString();
 
-  const customStyles = `
-    <style>
-        body { background: #f4f6f8; font-family: 'Kanit', sans-serif; padding-bottom: 70px; color: #333;}
+    const customStyles = `<style>
+        body { background: #f4f6f8; font-family: 'Kanit', sans-serif; padding-bottom: 70px; }
         .mobile-section { display: none; animation: fadeIn 0.3s; }
         .mobile-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .cover-bg { height: 180px; background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); position: relative; }
-        .profile-section { text-align: center; margin-top: -50px; position: relative; z-index: 2; }
-        .profile-avatar { width: 100px; height: 100px; border-radius: 50%; border: 4px solid #fff; background: white; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: inline-flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #556677; background: #e2e8f0; }
         .clean-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); border: none; padding: 20px; margin-bottom: 15px; }
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; box-shadow: 0 -2px 15px rgba(0,0,0,0.05); display: flex; justify-content: space-around; padding: 10px 0 5px 0; z-index: 1000; border-top: 1px solid #f0f0f0; }
-        .nav-item { text-align: center; color: #a0aec0; font-size: 0.75rem; font-weight: 500; cursor: pointer; flex: 1; transition: 0.2s; }
-        .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 2px; transition: 0.2s;}
-        .nav-item.active { color: #3b4b5b; }
-        .nav-item.active i { transform: translateY(-3px); }
-        .swipe-container { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 15px; padding-bottom: 10px; scroll-snap-type: x mandatory; }
-        .swipe-container::-webkit-scrollbar { display: none; }
-        .menu-list-item { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; color: #556677; transition: background 0.2s; }
-        .menu-list-item:hover { background: #f8f9fa; }
-        .menu-list-item:last-child { border-bottom: none; }
-        .menu-list-item i { font-size: 1.2rem; width: 30px; color: #888; }
-        .history-item-hover { transition: background 0.2s; cursor: pointer; }
-        .history-item-hover:hover { background-color: #f8f9fa !important; }
-    </style>
-  `;
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #f0f0f0; z-index: 1000; }
+        .nav-item { text-align: center; color: #a0aec0; font-size: 0.75rem; cursor: pointer; flex: 1; }
+        .nav-item.active { color: #3b4b5b; font-weight: bold; }
+        .nav-item i { font-size: 1.4rem; display: block; }
+        .menu-list-item { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+    </style>`;
 
-  app.innerHTML = customStyles + `
-    <div class="cover-bg">
-        <div style="position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.8); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; color: #333; cursor:pointer;" onclick="document.getElementById('nav-notifications').click();">
-            <i class="bi bi-bell-fill text-warning"></i> แจ้งเตือน ${notifications.length > 0 ? `<span class="badge bg-danger rounded-pill">${notifications.length}</span>` : ''}
-        </div>
-    </div>
-
-    <div class="profile-section mb-3">
-        <div class="profile-avatar">${firstLetter}</div>
-        <h4 class="mt-2 mb-0 fw-bold" style="color: #3b4b5b;">${user.firstName} ${user.lastName}</h4>
-        <p class="text-muted small mb-0">รหัสสมาชิก: ${user.memberId || 'N/A'}</p>
-    </div>
-
-    <div class="container-fluid" style="max-width: 600px; padding: 0 15px;">
-        <main id="tab-home" class="mobile-section active">
-            <div class="clean-card text-center py-4">
-                <p class="text-muted mb-1 small fw-bold">พอยท์สะสมของคุณ</p>
-                <h1 style="font-size: 3.5rem; font-weight: bold; color: #3b4b5b; margin: 0; line-height: 1;">${user.totalPoints}</h1>
+    app.innerHTML = customStyles + `
+        <div class="container-fluid py-3" style="max-width: 600px;">
+            <div class="text-center mb-4">
+                <div class="profile-avatar mx-auto mb-2" style="width:80px; height:80px; background:#e2e8f0; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2rem;">${user.firstName[0]}</div>
+                <h5 class="fw-bold mb-0">${user.firstName} ${user.lastName}</h5>
+                <small class="text-muted">พอยท์ของคุณ: ${user.totalPoints}</small>
             </div>
-            <div class="clean-card text-center">
-                <p class="fw-bold mb-3" style="color: #556677;">สแกนเพื่อสะสม/แลกพอยท์</p>
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${cleanPhone}" alt="QR Code" style="width: 140px; height: 140px; margin: 0 auto; border-radius: 10px; border: 1px solid #eee; padding: 5px;">
-                <p class="text-muted mt-3 mb-0 fs-5 fw-bold" style="letter-spacing: 2px;">${cleanPhone}</p>
-            </div>
-        </main>
 
-        <main id="tab-rewards" class="mobile-section">
-            <h5 class="fw-bold mb-3" style="color: #3b4b5b;">คูปอง / ของรางวัล</h5>
-            ${Object.keys(rewardsByCategory).map(category => `
-                <h6 class="text-muted fw-bold mb-2 small">${category}</h6>
-                <div class="swipe-container mb-4">
-                ${rewardsByCategory[category].map(reward => {
-                    if(reward.isPlaceholder) return `<div class="card border border-dashed rounded-4 flex-shrink-0 bg-light" style="width: 220px; scroll-snap-align: center;"><div class="card-body text-center py-4"><i class="bi bi-hourglass-split display-4 text-muted mb-2"></i><h6 class="fw-bold text-dark">${reward.name}</h6><small class="text-muted">${reward.description}</small></div></div>`;
-                    
-                    let isAvailableToday = true;
-                    let notAvailableMsg = "";
-                    if (category === "โปรประจำสัปดาห์" && reward.activeDays) {
-                        const allowedDays = reward.activeDays.split(",");
-                        if (!allowedDays.includes(currentDayStr)) {
-                            isAvailableToday = false;
-                            notAvailableMsg = `<div class="text-danger small mt-2 fw-bold" style="font-size:0.75rem;"><i class="bi bi-calendar-x"></i> แลกได้เฉพาะวันที่กำหนด</div>`;
-                        }
-                    }
+            <main id="tab-home" class="mobile-section active">
+                <div class="clean-card text-center">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${cleanPhone}" class="mb-3 border p-1 rounded" style="width:140px;">
+                    <p class="mb-0 fw-bold">${cleanPhone}</p>
+                    <small class="text-muted">สแกนเพื่อสะสมแต้ม</small>
+                </div>
+            </main>
 
-                    const cashText = reward.cashRequired > 0 ? ` + ${reward.cashRequired}฿` : "";
-                    const hasEnoughPoints = user.totalPoints >= reward.pointsRequired;
-                    const canRedeem = hasEnoughPoints && isAvailableToday;
-                    
-                    let btnStyle = "background:#3b4b5b; color:white; border:none;";
-                    if (!canRedeem) btnStyle = "background:#f1f5f9; color:#94a3b8; border:none;";
+            <main id="tab-rewards" class="mobile-section">
+                ${Object.keys(rewardsByCategory).map(cat => `
+                    <h6 class="fw-bold text-muted small mt-3">${cat}</h6>
+                    <div class="d-flex overflow-auto gap-3 pb-2" style="scrollbar-width: none;">
+                        ${rewardsByCategory[cat].map(r => {
+                            const isSpecial = cat === "โปรประจำสัปดาห์";
+                            const canRedeemToday = isSpecial ? (r.activeDays || "").split(",").includes(currentDay) : true;
+                            const hasPoints = user.totalPoints >= r.pointsRequired;
+                            const canRedeem = hasPoints && canRedeemToday;
 
-                    return `<div class="card border-0 rounded-4 shadow-sm flex-shrink-0" style="width: 240px; scroll-snap-align: center;">
-                                <div class="card-body d-flex flex-column">
-                                    <h6 class="fw-bold text-dark text-truncate">${reward.name}</h6>
-                                    <p class="small text-muted flex-grow-1" style="font-size:0.8rem; line-height:1.4;">${reward.description}</p>
-                                    <button class="btn btn-sm w-100 rounded-pill fw-bold redeem-btn" 
-                                        data-reward-id="${reward.rewardId}" 
-                                        data-reward-name="${reward.name}" 
-                                        ${canRedeem ? "" : "disabled"} 
-                                        style="${btnStyle}">แลก ${reward.pointsRequired} พอยท์${cashText}</button>
-                                    ${notAvailableMsg}
+                            return `<div class="card flex-shrink-0" style="width: 200px; border-radius: 12px;">
+                                <div class="card-body p-3">
+                                    <h6 class="fw-bold text-truncate">${r.name}</h6>
+                                    <p class="small text-muted" style="height: 40px; overflow: hidden;">${r.description}</p>
+                                    <button class="btn btn-sm w-100 rounded-pill redeem-btn" data-reward-id="${r.rewardId}" data-reward-name="${r.name}" 
+                                        ${canRedeem ? "" : "disabled"} style="background:${canRedeem ? '#3b4b5b' : '#eee'}; color:${canRedeem ? '#fff' : '#aaa'}; border:none;">
+                                        ${r.pointsRequired} พอยท์
+                                    </button>
+                                    ${!canRedeemToday ? '<small class="text-danger d-block mt-1" style="font-size:0.65rem;">แลกไม่ได้ในวันนี้</small>' : ''}
                                 </div>
-                            </div>`
-                }).join("")}</div>`).join("")}
-        </main>
+                            </div>`;
+                        }).join("")}
+                    </div>
+                `).join("")}
+            </main>
 
-        <main id="tab-history" class="mobile-section">
-            <h5 class="fw-bold mb-3" style="color: #3b4b5b;">ประวัติการทำรายการ</h5>
-            <div class="clean-card p-0 overflow-hidden">
-                <ul class="list-group list-group-flush">
-                ${user.pointsHistory.length > 0 ? user.pointsHistory.map(log => {
-                    const isRedeem = log.pointsChange < 0;
-                    const logDate = new Date(log.timestamp).toLocaleDateString('th-TH');
-                    
-                    const refCode = log.refCode || ("RWD-" + cleanPhone.slice(-4) + log.timestamp.toString().slice(-4));
-                    const status = log.status || 'pending';
-                    
-                    const clickEvent = isRedeem ? `onclick="showHistoryReward('${log.reason.replace(/'/g, "\\'")}', '${logDate}', '${refCode}', '${status}')"` : '';
-                    const hoverClass = isRedeem ? 'history-item-hover' : '';
-                    const statusIcon = status === 'used' ? '<i class="bi bi-check-circle-fill text-success"></i> ใช้แล้ว' : '<i class="bi bi-qr-code text-primary"></i> โชว์คูปอง';
+            <main id="tab-history" class="mobile-section">
+                <div class="clean-card p-0 overflow-hidden">
+                    <ul class="list-group list-group-flush">
+                        ${user.pointsHistory.map(log => {
+                            const isRedeem = log.pointsChange < 0;
+                            const date = new Date(log.timestamp).toLocaleDateString('th-TH');
+                            const refCode = log.refCode || "RWD-" + Math.floor(1000+Math.random()*9000);
+                            return `<li class="list-group-item d-flex justify-content-between align-items-center" ${isRedeem ? `onclick="showHistoryReward('${log.reason}', '${date}', '${refCode}', '${log.status || 'pending'}')"` : ""}>
+                                <div><small class="d-block text-muted">${date}</small><strong>${log.reason}</strong>${isRedeem ? '<br><small class="text-primary fw-bold">คลิกดู QR Code</small>' : ''}</div>
+                                <span class="badge ${isRedeem ? 'bg-danger' : 'bg-success'} rounded-pill">${log.pointsChange}</span>
+                            </li>`;
+                        }).join("")}
+                    </ul>
+                </div>
+            </main>
 
-                    return `
-                    <li class="list-group-item d-flex justify-content-between align-items-center p-3 border-bottom ${hoverClass}" ${clickEvent}>
-                        <div>
-                            <strong class="text-dark d-block text-truncate" style="max-width:200px; font-size:0.9rem;">${log.reason}</strong>
-                            <small class="text-muted" style="font-size:0.75rem;">${logDate}</small>
-                            ${isRedeem ? `<br><small class="mt-1 fw-bold" style="font-size:0.75rem;">${statusIcon}</small>` : ''}
-                        </div>
-                        <span class="badge bg-${log.pointsChange > 0 ? "success" : "danger"} bg-opacity-10 text-${log.pointsChange > 0 ? "success" : "danger"} rounded-pill px-3 py-2 fs-6">${log.pointsChange > 0 ? "+" : ""}${log.pointsChange}</span>
-                    </li>`
-                }).join("") : '<li class="list-group-item text-center p-4 text-muted">ยังไม่มีประวัติการใช้งาน</li>'}
-                </ul>
-            </div>
-        </main>
+            <main id="tab-profile" class="mobile-section">
+                <div class="clean-card p-0 overflow-hidden">
+                    <div class="menu-list-item" id="btnEditProfile"><i class="bi bi-person-gear me-3"></i> แก้ไขข้อมูลส่วนตัว</div>
+                    <div class="menu-list-item text-danger" id="btnLogout"><i class="bi bi-box-arrow-right me-3"></i> ออกจากระบบ</div>
+                </div>
+            </main>
+        </div>
 
-        <main id="tab-profile" class="mobile-section">
-            <h5 class="fw-bold mb-3" style="color: #3b4b5b;">บัญชีของฉัน</h5>
-            <div class="clean-card p-0 mb-4 overflow-hidden">
-                <div class="menu-list-item" id="btnEditProfile"><i class="bi bi-person-gear"></i> แก้ไขข้อมูลส่วนตัว</div>
-                <div class="menu-list-item" onclick="window.open('https://line.me/R/ti/p/@732fqlwh', '_blank')"><i class="bi bi-headset"></i> ติดต่อแอดมิน</div>
-                <div class="menu-list-item text-danger fw-bold" id="btnLogout"><i class="bi bi-box-arrow-right text-danger"></i> ออกจากระบบ</div>
-            </div>
-        </main>
-    </div>
+        <nav class="bottom-nav">
+            <div class="nav-item active" data-target="tab-home"><i class="bi bi-house-door"></i>หน้าหลัก</div>
+            <div class="nav-item" data-target="tab-rewards"><i class="bi bi-gift"></i>แลกรางวัล</div>
+            <div class="nav-item" data-target="tab-history"><i class="bi bi-clock-history"></i>ประวัติ</div>
+            <div class="nav-item" data-target="tab-profile"><i class="bi bi-person"></i>บัญชี</div>
+        </nav>
+    `;
 
-    <nav class="bottom-nav">
-        <div class="nav-item active" data-target="tab-home"><i class="bi bi-house-door"></i>หน้าแรก</div>
-        <div class="nav-item" data-target="tab-rewards"><i class="bi bi-gift"></i>คูปอง</div>
-        <div class="nav-item" data-target="tab-history"><i class="bi bi-clock-history"></i>ประวัติ</div>
-        <div class="nav-item" data-target="tab-profile"><i class="bi bi-person"></i>โปรไฟล์</div>
-        <div class="d-none" id="nav-notifications"></div>
-    </nav>
-  `;
+    // คุมการเปลี่ยน Tab
+    document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active')); this.classList.add('active');
+            document.querySelectorAll('.mobile-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(this.getAttribute('data-target')).classList.add('active');
+        });
+    });
 
-  document.querySelectorAll('.nav-item').forEach(btn => {
-      btn.addEventListener('click', function() {
-          document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active')); this.classList.add('active');
-          document.querySelectorAll('.mobile-section').forEach(sec => sec.classList.remove('active'));
-          document.getElementById(this.getAttribute('data-target')).classList.add('active'); window.scrollTo(0, 0);
-      });
-  });
+    document.getElementById("btnLogout").addEventListener("click", () => { localStorage.clear(); sessionStorage.clear(); window.location.href = "index.html"; });
 
-  document.getElementById("btnLogout").addEventListener("click", () => { localStorage.clear(); sessionStorage.clear(); window.location.href = "index.html"; });
+    document.getElementById("btnEditProfile").addEventListener("click", () => {
+        Swal.fire({
+            title: 'แก้ไขข้อมูลส่วนตัว',
+            html: `<div class="text-start mt-2">
+                    <label class="small fw-bold">อีเมล</label>
+                    <input type="email" id="editEmail" class="form-control mb-3" value="${user.email}">
+                    <label class="small fw-bold text-muted">เบอร์โทรศัพท์ (แก้ไขไม่ได้)</label>
+                    <input type="text" class="form-control bg-light" value="${cleanPhone}" disabled>
+                    <small class="text-danger">* ติดต่อแอดมินหากต้องการเปลี่ยนเบอร์โทร</small>
+                   </div>`,
+            showCancelButton: true,
+            confirmButtonText: 'บันทึก',
+            preConfirm: () => document.getElementById("editEmail").value
+        }).then(res => { if(res.isConfirmed) Swal.fire("สำเร็จ", "บันทึกข้อมูลแล้ว", "success"); });
+    });
 
-  document.getElementById("btnEditProfile").addEventListener("click", () => {
-      Swal.fire({
-          title: '<h5 class="fw-bold mb-0" style="color:#3b4b5b;">แก้ไขข้อมูลส่วนตัว</h5>',
-          html: `
-              <div class="text-start mb-3 mt-3">
-                  <label class="small text-muted fw-bold mb-1">อีเมลของท่าน</label>
-                  <input type="email" id="editEmailInput" class="form-control" value="${user.email || ''}" placeholder="กรอกอีเมล">
-              </div>
-              <div class="text-start mb-3">
-                  <label class="small text-muted fw-bold mb-1">เบอร์โทรศัพท์ <span class="text-danger">(ไม่สามารถแก้ไขได้)</span></label>
-                  <input type="text" class="form-control bg-light" value="${cleanPhone}" disabled>
-                  <small class="text-danger" style="font-size:0.75rem;">* หากต้องการเปลี่ยนเบอร์ กรุณาติดต่อแอดมิน</small>
-              </div>
-          `,
-          showCancelButton: true,
-          confirmButtonColor: '#3b4b5b',
-          cancelButtonColor: '#e2e8f0',
-          cancelButtonText: '<span class="text-dark fw-bold">ยกเลิก</span>',
-          confirmButtonText: 'บันทึกข้อมูล',
-          customClass: { popup: 'rounded-4 shadow-lg' },
-          preConfirm: () => document.getElementById("editEmailInput").value
-      }).then((res) => {
-          if(res.isConfirmed) {
-              Swal.fire({icon: "success", title: "สำเร็จ", text: "บันทึกข้อมูลเรียบร้อยแล้ว", confirmButtonColor: '#3b4b5b', customClass: { popup: 'rounded-4' }});
-          }
-      });
-  });
-  
-  document.getElementById("nav-notifications").addEventListener("click", () => {
-    let nHtml = '<div class="text-start mt-2">';
-    if (notifications.length === 0) nHtml += '<div class="text-center py-4 text-muted">ไม่มีแจ้งเตือนใหม่</div>'; 
-    else {
-        nHtml += '<ul class="list-group list-group-flush mb-3" style="max-height: 300px; overflow-y: auto;">';
-        notifications.forEach((n) => { nHtml += `<li class="list-group-item px-1 py-3"><strong class="text-primary d-block mb-1 small">${new Date(n.timestamp).toLocaleDateString("th-TH")}</strong><span class="text-dark small">${n.message}</span></li>`; });
-        nHtml += '</ul>';
-    }
-    Swal.fire({ title: '<h5 class="fw-bold text-start">การแจ้งเตือน</h5>', html: nHtml, showConfirmButton: false, showCloseButton: true, customClass: { popup: 'rounded-4' } });
-  });
-
-  document.querySelectorAll(".redeem-btn").forEach(btn => {
-      btn.addEventListener("click", function() {
-          const rewardName = this.dataset.rewardName;
-          Swal.fire({ 
-              title: "ยืนยันการแลกรางวัล?", 
-              text: `ต้องการแลก "${rewardName}" ใช่ไหม?`, 
-              icon: "question", 
-              showCancelButton: true, 
-              confirmButtonColor: "#10b981", 
-              confirmButtonText: "ยืนยัน", 
-              cancelButtonText: "ยกเลิก",
-              customClass: { popup: 'rounded-4' } 
-          }).then(res => {
-              if (res.isConfirmed) {
-                  apiCall("redeemReward", { memberPhone: cleanPhone, rewardId: this.dataset.rewardId }).then((respData) => {
-                      const refCode = (respData && respData.refCode) ? respData.refCode : "RWD-" + cleanPhone.slice(-4) + Math.floor(1000 + Math.random() * 9000);
-                      showHistoryReward(rewardName, new Date().toLocaleDateString('th-TH'), refCode, 'pending');
-                  });
-              }
-          });
-      });
-  });
+    document.querySelectorAll(".redeem-btn").forEach(btn => {
+        btn.addEventListener("click", function() {
+            const rName = this.dataset.rewardName;
+            Swal.fire({ title: "ยืนยันการแลก?", text: rName, icon: "question", showCancelButton: true }).then(res => {
+                if (res.isConfirmed) {
+                    apiCall("redeemReward", { memberPhone: cleanPhone, rewardId: this.dataset.rewardId }).then(data => {
+                        showHistoryReward(rName, new Date().toLocaleDateString('th-TH'), data.refCode || "RWD-NEW", 'pending');
+                    });
+                }
+            });
+        });
+    });
 }
 
-// === ADMIN DASHBOARD ===
+// ==========================================
+// 4. หน้าแอดมิน (Admin)
+// ==========================================
 function handleAdminPage() {
-  const userStr = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
-  if (!userStr) { window.location.href = "index.html"; return; }
-  const adminUser = JSON.parse(userStr);
-  if (!adminUser.isAdmin) { window.location.href = "index.html"; return; }
-  
-  window.editCustomerPhone = function(oldPhone) {
-      Swal.fire({
-          title: 'เปลี่ยนเบอร์โทรลูกค้า',
-          input: 'text',
-          inputLabel: 'เบอร์โทรศัพท์ใหม่ 10 หลัก',
-          inputPlaceholder: '08XXXXXXXX',
-          showCancelButton: true,
-          confirmButtonColor: '#3b4b5b',
-          confirmButtonText: 'บันทึก',
-          cancelButtonText: 'ยกเลิก',
-          customClass: { popup: 'rounded-4 shadow-lg' }
-      }).then((result) => {
-          if (result.isConfirmed && result.value) {
-              Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: `เปลี่ยนเบอร์จาก ${oldPhone} เป็น ${result.value} แล้ว`, customClass: { popup: 'rounded-4' }});
-          }
-      });
-  };
+    const userStr = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
+    if (!userStr) { window.location.href = "index.html"; return; }
+    const adminUser = JSON.parse(userStr);
+    const app = document.getElementById("app");
 
-  window.suspendCustomer = function(phone) {
-      Swal.fire({
-          title: 'ระงับบัญชี?',
-          text: `คุณแน่ใจหรือไม่ว่าต้องการระงับบัญชีของเบอร์ ${phone} ลูกค้าจะไม่สามารถเข้าสู่ระบบได้`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#d33',
-          cancelButtonColor: '#e2e8f0',
-          confirmButtonText: 'ใช่, ระงับบัญชี',
-          cancelButtonText: '<span class="text-dark">ยกเลิก</span>',
-          customClass: { popup: 'rounded-4 shadow-lg' }
-      }).then((result) => {
-          if (result.isConfirmed) {
-              Swal.fire({ icon: 'success', title: 'ระงับบัญชีแล้ว', text: `บัญชี ${phone} ถูกระงับเรียบร้อย`, customClass: { popup: 'rounded-4' }});
-          }
-      });
-  };
+    window.editCustomerPhone = (p) => Swal.fire({ title: 'เปลี่ยนเบอร์', input: 'text', showCancelButton: true }).then(res => { if(res.isConfirmed) Swal.fire('สำเร็จ', 'เปลี่ยนเบอร์แล้ว', 'success'); });
+    window.suspendCustomer = (p) => Swal.fire({ title: 'ระงับบัญชี?', icon: 'warning', showCancelButton: true }).then(res => { if(res.isConfirmed) Swal.fire('เรียบร้อย', 'ระงับบัญชีแล้ว', 'success'); });
 
-  const app = document.getElementById("app");
-  
-  const adminStyles = `
-    <style>
-        body { background: #f4f6f8; font-family: 'Kanit', sans-serif; } 
-        .admin-card { background: white; border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 25px; margin-bottom: 20px;} 
-        .topbar { background: #3b4b5b; color: white; padding: 15px 20px; border-radius: 0 0 16px 16px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
-        .admin-sidebar { position: fixed; top: 0; left: -300px; width: 280px; height: 100vh; background: #fff; box-shadow: 4px 0 15px rgba(0,0,0,0.1); z-index: 1050; transition: left 0.3s ease; display: flex; flex-direction: column; }
-        .admin-sidebar.open { left: 0; }
-        .admin-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1049; opacity: 0; visibility: hidden; transition: opacity 0.3s; }
-        .admin-overlay.show { opacity: 1; visibility: visible; }
-        .admin-menu-item { padding: 15px 20px; color: #556677; display: flex; align-items: center; gap: 15px; cursor: pointer; font-weight: 500; border-bottom: 1px solid #f0f0f0; }
-        .admin-menu-item:hover { background: #f8fafc; color: #3b4b5b; }
-    </style>
-  `;
-
-  app.innerHTML = adminStyles + `
-        <div class="admin-overlay" id="adminOverlay"></div>
-        <div class="admin-sidebar" id="adminSidebar">
-            <div class="p-4 text-white text-center" style="background: #3b4b5b;">
-                <div class="bg-white text-dark rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 60px; height: 60px; font-size: 2rem;"><i class="bi bi-person-badge"></i></div>
-                <h6 class="mb-0 fw-bold">${adminUser.firstName} ${adminUser.lastName}</h6>
-                <small class="text-white-50">ผู้ดูแลระบบ</small>
-            </div>
-            <div class="flex-grow-1 overflow-auto">
-                <div class="admin-menu-item" onclick="location.reload();"><i class="bi bi-house-door fs-5"></i> หน้าหลักจัดการระบบ</div>
-                <div class="admin-menu-item text-danger mt-auto" id="sidebarLogoutBtn"><i class="bi bi-box-arrow-right fs-5"></i> ออกจากระบบ</div>
-            </div>
-        </div>
-
-        <div class="topbar d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <button id="adminBurgerBtn" class="btn btn-link text-white p-0 me-3 fs-3"><i class="bi bi-list"></i></button>
-                <h4 class="mb-0 fw-bold d-none d-sm-block">ระบบแอดมิน</h4>
-                <h5 class="mb-0 fw-bold d-sm-none">แอดมิน</h5>
-            </div>
-            <div class="d-flex align-items-center">
-                <button id="logoutBtn" class="btn btn-sm btn-outline-light rounded-pill d-none d-md-block"><i class="bi bi-box-arrow-right me-1"></i>ออกจากระบบ</button>
-            </div>
-        </div>
-
-        <div class="container-fluid" style="max-width: 1200px;">
-            <div class="row g-4">
-                <div class="col-lg-7">
-                    <div class="admin-card">
-                        <h5 class="fw-bold mb-4" style="color:#3b4b5b;"><i class="bi bi-qr-code-scan me-2"></i>สแกน หรือ ค้นหาเบอร์</h5>
-                        <div class="input-group mb-4">
-                            <button class="btn btn-light border" id="scanBarcodeBtn"><i class="bi bi-qr-code-scan fs-5 text-primary"></i></button>
-                            <input type="text" id="searchPhone" class="form-control" placeholder="เบอร์โทรศัพท์ หรือ รหัสคูปอง (RWD-XXXX)">
-                            <button class="btn text-white" id="searchBtn" style="background:#3b4b5b;">ตกลง</button>
-                        </div>
-                        
-                        <div id="customerActions" class="d-none">
-                            <div id="customerDetails" class="p-4 mb-4 rounded-4 border bg-light d-flex flex-column gap-3"></div>
-                            
-                            <form id="pointsForm" class="p-4 border rounded-3 bg-white">
-                                <h6 class="fw-bold text-muted mb-3"><i class="bi bi-plus-circle"></i> จัดการให้/ลบ แต้ม</h6>
-                                <div class="row g-2 mb-3">
-                                    <div class="col-md-5"><label class="small text-muted mb-1">แต้ม (+ หรือ -)</label><input type="number" id="pointsChange" class="form-control" placeholder="เช่น 20 หรือ -10" required></div>
-                                    <div class="col-md-7"><label class="small text-muted mb-1">เหตุผล</label><input type="text" id="reason" class="form-control" placeholder="เช่น ยอดซื้อ 400 บาท" required></div>
-                                </div>
-                                <button type="submit" class="btn btn-success w-100 rounded-pill fw-bold">ยืนยันการให้แต้ม</button>
-                            </form>
-                        </div>
-                    </div>
+    app.innerHTML = `
+        <div class="container-fluid p-4" style="max-width: 1000px;">
+            <div class="card p-4 mb-4 shadow-sm border-0" style="border-radius:16px;">
+                <h5 class="fw-bold mb-4">สแกน/ค้นหาลูกค้าหรือคูปอง</h5>
+                <div class="input-group">
+                    <button class="btn btn-outline-primary" id="scanBarcodeBtn"><i class="bi bi-qr-code-scan"></i> สแกน</button>
+                    <input type="text" id="searchPhone" class="form-control" placeholder="เบอร์โทร หรือ รหัสคูปอง RWD-...">
+                    <button class="btn btn-dark" id="searchBtn">ตกลง</button>
                 </div>
-
-                <div class="col-lg-5">
-                    <div class="admin-card">
-                        <h5 class="fw-bold mb-4" style="color:#3b4b5b;"><i class="bi bi-gift me-2"></i>เพิ่มโปรโมชั่น / รางวัล</h5>
-                        <form id="addRewardForm">
-                            <div class="mb-2"><input type="text" id="rewardName" class="form-control" placeholder="ชื่อรางวัล" required></div>
-                            <div class="mb-2"><textarea id="rewardDesc" class="form-control" placeholder="รายละเอียด" rows="2"></textarea></div>
-                            <div class="row g-2 mb-3">
-                                <div class="col-6"><input type="number" id="rewardPoints" class="form-control" placeholder="ใช้แต้ม" required></div>
-                                <div class="col-6"><input type="number" id="rewardCash" class="form-control" value="0" placeholder="เงินเพิ่ม (ถ้ามี)"></div>
-                            </div>
-                            <div class="mb-3">
-                                <select id="rewardCategory" class="form-select" required>
-                                    <option value="" disabled selected>เลือกหมวดหมู่</option>
-                                    <option value="ส่วนลดทั่วไป">ส่วนลดทั่วไป</option>
-                                    <option value="ส่วนลดสินค้าพรีเมี่ยม">ส่วนลดสินค้าพรีเมี่ยม</option>
-                                    <option value="แลกเงินสด">แลกเงินสด</option>
-                                    <option value="เสริมประกัน">เสริมประกัน</option>
-                                    <option value="โปรประจำสัปดาห์">🌟 โปรประจำสัปดาห์ (ระบุวันได้)</option>
-                                </select>
-                            </div>
-
-                            <div id="daySelectorContainer" class="mb-4 d-none p-3 bg-light rounded border">
-                                <label class="small fw-bold text-primary mb-2">เลือกวันที่จะให้โชว์โปรนี้</label>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="1" id="d1"><label class="form-check-label small" for="d1">จ.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="2" id="d2"><label class="form-check-label small" for="d2">อ.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="3" id="d3"><label class="form-check-label small" for="d3">พ.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="4" id="d4"><label class="form-check-label small" for="d4">พฤ.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="5" id="d5"><label class="form-check-label small" for="d5">ศ.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="6" id="d6"><label class="form-check-label small text-danger" for="d6">ส.</label></div><div class="form-check"><input class="form-check-input promo-day" type="checkbox" value="0" id="d0"><label class="form-check-label small text-danger" for="d0">อา.</label></div>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn text-white w-100 rounded-pill fw-bold" style="background:#3b4b5b;">บันทึกโปรโมชั่น</button>
-                        </form>
+                <div id="customerDetails" class="mt-4 d-none p-3 bg-light rounded-3"></div>
+                <form id="pointsForm" class="mt-3 d-none p-3 border rounded-3">
+                    <div class="row g-2">
+                        <div class="col-4"><input type="number" id="pointsChange" class="form-control" placeholder="แต้ม" required></div>
+                        <div class="col-8"><input type="text" id="reason" class="form-control" placeholder="เหตุผล" required></div>
                     </div>
-                </div>
+                    <button type="submit" class="btn btn-success w-100 mt-2">บันทึกแต้ม</button>
+                </form>
             </div>
+
+            <div class="card p-4 shadow-sm border-0" style="border-radius:16px;">
+                <h5 class="fw-bold mb-4">เพิ่มรางวัล/โปรโมชั่น</h5>
+                <form id="addRewardForm">
+                    <input type="text" id="rewardName" class="form-control mb-2" placeholder="ชื่อรางวัล" required>
+                    <select id="rewardCategory" class="form-select mb-2" required>
+                        <option value="ส่วนลดทั่วไป">ส่วนลดทั่วไป</option>
+                        <option value="ส่วนลดสินค้าพรีเมี่ยม">ส่วนลดสินค้าพรีเมี่ยม</option>
+                        <option value="แลกเงินสด">แลกเงินสด</option>
+                        <option value="เสริมประกัน">เสริมประกัน</option>
+                        <option value="โปรประจำสัปดาห์">โปรประจำสัปดาห์</option>
+                    </select>
+                    <div id="daySelector" class="d-none mb-2 p-2 border rounded">
+                        <small class="d-block mb-1">เลือกวัน: 0(อา)-6(ส)</small>
+                        <input type="text" id="activeDays" class="form-control" placeholder="เช่น 0,6">
+                    </div>
+                    <input type="number" id="rewardPoints" class="form-control mb-3" placeholder="ใช้แต้ม" required>
+                    <button type="submit" class="btn btn-primary w-100">บันทึกของรางวัล</button>
+                </form>
+            </div>
+            <button class="btn btn-link text-danger w-100 mt-4" onclick="localStorage.clear();location.reload();">ออกจากระบบ</button>
         </div>
     `;
 
-  document.getElementById("adminBurgerBtn").addEventListener("click", () => {
-      document.getElementById("adminSidebar").classList.add("open");
-      document.getElementById("adminOverlay").classList.add("show");
-  });
-  document.getElementById("adminOverlay").addEventListener("click", () => {
-      document.getElementById("adminSidebar").classList.remove("open");
-      document.getElementById("adminOverlay").classList.remove("show");
-  });
+    document.getElementById("rewardCategory").addEventListener("change", function() {
+        document.getElementById("daySelector").classList.toggle("d-none", this.value !== "โปรประจำสัปดาห์");
+    });
 
-  const doLogout = () => { localStorage.clear(); sessionStorage.clear(); window.location.href = "index.html"; };
-  document.getElementById("logoutBtn").addEventListener("click", doLogout);
-  document.getElementById("sidebarLogoutBtn").addEventListener("click", doLogout);
+    const searchAction = () => {
+        const val = document.getElementById("searchPhone").value.trim();
+        if (val.toUpperCase().startsWith("RWD-")) {
+            Swal.fire({ title: 'ยืนยันการใช้คูปอง', text: val, icon: 'info', showCancelButton: true }).then(res => {
+                if(res.isConfirmed) apiCall("useCoupon", { code: val }).then(() => Swal.fire('สำเร็จ', 'ใช้คูปองแล้ว', 'success'));
+            });
+        } else {
+            apiCall("searchUser", { phone: val }).then(user => {
+                document.getElementById("customerDetails").innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div><strong>${user.firstName}</strong><br><small>${user.phone}</small></div>
+                        <div class="text-end text-primary h4 mb-0">${user.totalPoints}</div>
+                    </div>
+                    <div class="mt-2 d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-info flex-fill" onclick="editCustomerPhone()">แก้เบอร์</button>
+                        <button class="btn btn-sm btn-outline-danger flex-fill" onclick="suspendCustomer()">ระงับ</button>
+                    </div>`;
+                document.getElementById("customerDetails").classList.remove("d-none");
+                document.getElementById("pointsForm").classList.remove("d-none");
+            });
+        }
+    };
 
-  document.getElementById("rewardCategory").addEventListener("change", function() {
-      if (this.value === "โปรประจำสัปดาห์") document.getElementById("daySelectorContainer").classList.remove("d-none");
-      else document.getElementById("daySelectorContainer").classList.add("d-none");
-  });
+    document.getElementById("searchBtn").addEventListener("click", searchAction);
+    document.getElementById("pointsForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        apiCall("managePoints", { 
+            memberPhone: document.getElementById("searchPhone").value, 
+            pointsChange: document.getElementById("pointsChange").value, 
+            reason: document.getElementById("reason").value 
+        }).then(() => { Swal.fire("สำเร็จ", "เพิ่มแต้มแล้ว", "success"); searchAction(); });
+    });
 
-  let currentCustomerPhone = null;
-  const searchAction = () => {
-    const inputVal = document.getElementById("searchPhone").value.trim(); 
-    if (!inputVal) return;
-
-    if (inputVal.toUpperCase().startsWith("RWD-")) {
+    // แก้ไขระบบสแกน Multi-format + File
+    document.getElementById("scanBarcodeBtn").addEventListener("click", () => {
         Swal.fire({
-            title: '<h5 class="fw-bold mb-0 text-primary"><i class="bi bi-ticket-perforated"></i> คูปองของรางวัล</h5>',
-            html: `
-                <div class="p-4 bg-light rounded-4 my-3 text-center border">
-                    <small class="text-muted mb-1 d-block">รหัสคูปอง</small>
-                    <h3 class="fw-bold text-dark mb-0 tracking-widest">${inputVal}</h3>
-                </div>
-                <p class="text-secondary fw-bold">คุณต้องการ <u>ยืนยันการใช้คูปองนี้</u> ใช่หรือไม่?</p>
-            `,
-            icon: 'info',
-            showCancelButton: true,
-            confirmButtonColor: '#10b981',
-            cancelButtonColor: '#e2e8f0',
-            confirmButtonText: 'ยืนยันการใช้',
-            cancelButtonText: '<span class="text-dark fw-bold">ปิด</span>',
-            customClass: { popup: 'rounded-4 shadow-lg' }
-        }).then(res => {
-            if(res.isConfirmed) {
-                apiCall("useCoupon", { code: inputVal, adminPhone: adminUser.phone }).then(() => {
-                    Swal.fire({title: 'สำเร็จ!', text: 'อัปเดตสถานะคูปองเป็น "ใช้งานแล้ว" เรียบร้อย', icon: 'success', confirmButtonColor: '#3b4b5b', customClass: { popup: 'rounded-4' }});
-                    document.getElementById("searchPhone").value = "";
+            title: 'สแกนรหัส',
+            html: '<div id="qr-reader" style="width:100%; border-radius:10px; overflow:hidden;"></div><input type="file" id="qr-file" accept="image/*" class="form-control mt-3">',
+            showCancelButton: true, showConfirmButton: false,
+            didOpen: () => {
+                const scanner = new Html5Qrcode("qr-reader");
+                const onOk = (t) => { scanner.stop(); document.getElementById("searchPhone").value = t; Swal.close(); searchAction(); };
+                scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onOk);
+                document.getElementById("qr-file").addEventListener("change", e => {
+                    if (e.target.files[0]) scanner.scanFile(e.target.files[0], true).then(onOk).catch(() => Swal.showValidationMessage("อ่านไม่ได้"));
                 });
             }
         });
-    } else {
-        apiCall("searchUser", { phone: inputVal }).then((user) => {
-            currentCustomerPhone = user.phone.replace(/'/g, '');
-            document.getElementById("customerDetails").innerHTML = `
-                <div class="d-flex justify-content-between align-items-center w-100">
-                    <div>
-                        <h6 class="fw-bold mb-0">${user.firstName} ${user.lastName}</h6>
-                        <small class="text-muted"><i class="bi bi-telephone"></i> ${currentCustomerPhone}</small>
-                    </div>
-                    <div class="text-end">
-                        <h4 class="text-primary mb-0 fw-bold">${user.totalPoints} <span class="fs-6 text-muted">พอยท์</span></h4>
-                    </div>
-                </div>
-                <div class="d-flex gap-2 w-100 mt-2">
-                    <button class="btn btn-sm btn-outline-info flex-fill fw-bold" onclick="editCustomerPhone('${currentCustomerPhone}')"><i class="bi bi-pencil-square"></i> แก้เบอร์โทร</button>
-                    <button class="btn btn-sm btn-outline-danger flex-fill fw-bold" onclick="suspendCustomer('${currentCustomerPhone}')"><i class="bi bi-person-x"></i> ระงับบัญชี</button>
-                </div>
-            `;
-            document.getElementById("customerActions").classList.remove("d-none");
-        }).catch(() => Swal.fire({title: "ไม่พบข้อมูล", text:"กรุณาตรวจสอบเบอร์โทรศัพท์อีกครั้ง", icon: "warning", customClass: { popup: 'rounded-4' }}));
-    }
-  };
-  
-  document.getElementById("searchBtn").addEventListener("click", searchAction);
+    });
 
-  document.getElementById("pointsForm").addEventListener("submit", (e) => {
-    e.preventDefault(); 
-    apiCall("managePoints", { memberPhone: currentCustomerPhone, pointsChange: parseInt(document.getElementById("pointsChange").value, 10), reason: document.getElementById("reason").value, adminPhone: adminUser.phone }).then(() => { Swal.fire({title: "สำเร็จ", icon: "success", customClass: { popup: 'rounded-4' }}); document.getElementById("pointsForm").reset(); searchAction(); });
-  });
-
-  document.getElementById("addRewardForm").addEventListener("submit", (e) => {
-    e.preventDefault(); let selectedDays = [];
-    if (document.getElementById("rewardCategory").value === "โปรประจำสัปดาห์") {
-        document.querySelectorAll(".promo-day:checked").forEach(cb => selectedDays.push(cb.value));
-    }
-    const payload = { name: document.getElementById("rewardName").value, description: document.getElementById("rewardDesc").value, pointsRequired: parseInt(document.getElementById("rewardPoints").value, 10), cashRequired: parseInt(document.getElementById("rewardCash").value, 10) || 0, category: document.getElementById("rewardCategory").value, isNew: true, adminPhone: adminUser.phone, activeDays: selectedDays.join(",") };
-    apiCall("addReward", payload).then(() => { Swal.fire({title: "สำเร็จ", text:"เพิ่มโปรโมชั่นเรียบร้อยแล้ว", icon: "success", customClass: { popup: 'rounded-4' }}); document.getElementById("addRewardForm").reset(); document.getElementById("daySelectorContainer").classList.add("d-none"); });
-  });
-
-  document.getElementById("scanBarcodeBtn").addEventListener("click", () => {
-      Swal.fire({
-          title: 'สแกน QR Code',
-          html: '<div id="admin-qr-reader" style="width: 100%; border-radius: 8px; overflow: hidden;"></div><p class="small text-muted mt-2">รองรับทั้งการสแกนเบอร์ลูกค้า และ รหัสคูปองรางวัล</p>',
-          showCancelButton: true,
-          showConfirmButton: false,
-          cancelButtonText: 'ปิดกล้อง',
-          customClass: { popup: 'rounded-4' },
-          didOpen: () => {
-              const html5QrcodeScanner = new Html5QrcodeScanner("admin-qr-reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-              html5QrcodeScanner.render((decodedText) => {
-                  document.getElementById("searchPhone").value = decodedText;
-                  html5QrcodeScanner.clear(); 
-                  Swal.close(); 
-                  searchAction();
-              }, (error) => {});
-          }
-      });
-  });
+    document.getElementById("addRewardForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        apiCall("addReward", {
+            name: document.getElementById("rewardName").value,
+            category: document.getElementById("rewardCategory").value,
+            pointsRequired: document.getElementById("rewardPoints").value,
+            activeDays: document.getElementById("activeDays").value
+        }).then(() => { Swal.fire("สำเร็จ", "เพิ่มรางวัลแล้ว", "success"); e.target.reset(); });
+    });
 }
-
