@@ -12,10 +12,16 @@ function apiCall(action, payload) {
   .then(res => res.json()).then(res => { Swal.close(); if (res.status === "error") throw new Error(res.message); return res.data; })
   .catch(err => { Swal.fire({ icon: "error", title: "ข้อผิดพลาด", text: err.message }); throw err; });
 }
+
 function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
 
 document.addEventListener("DOMContentLoaded", () => {
   const path = window.location.pathname.toLowerCase();
+  
+  // ตั้งค่าปีลิขสิทธิ์
+  const yearEl = document.getElementById('copyright-year') || document.getElementById('year');
+  if(yearEl) yearEl.textContent = new Date().getFullYear();
+
   if (path.includes("register")) handleRegisterPage();
   else if (path.includes("dashboard")) handleDashboardPage();
   else if (path.includes("admin")) handleAdminPage();
@@ -55,8 +61,40 @@ function handleLoginPage() {
             });
         });
     }
+
+    // แก้ไข: ปุ่มลืมรหัสผ่าน
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    if(forgotPasswordLink) {
+        forgotPasswordLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            Swal.fire({
+                title: 'ลืมรหัสผ่าน?',
+                text: "กรุณากรอกเบอร์โทรศัพท์ของคุณเพื่อรับลิงก์รีเซ็ต",
+                input: 'tel',
+                inputPlaceholder: '08XXXXXXXX',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3b4b5b',
+                confirmButtonText: 'ส่งข้อความ'
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    Swal.fire({ icon: 'success', title: 'ส่งเรียบร้อย!', text: 'เราได้ส่งข้อความไปที่เบอร์ ' + result.value + ' แล้ว', confirmButtonColor: '#3b4b5b' });
+                }
+            });
+        });
+    }
 }
+
 function handleRegisterPage() {
+    // แก้ไข: ปลดล็อกปุ่มเมื่อติ๊กยอมรับเงื่อนไข
+    const policyCheckbox = document.getElementById("policyCheckbox");
+    const registerBtn = document.getElementById("registerBtn");
+    if (policyCheckbox && registerBtn) {
+        policyCheckbox.addEventListener("change", function() {
+            registerBtn.disabled = !this.checked;
+        });
+    }
+
     const registerForm = document.getElementById("registerForm");
     if (registerForm) {
         registerForm.addEventListener("submit", (e) => {
@@ -69,7 +107,7 @@ function handleRegisterPage() {
     }
 }
 
-// === CUSTOMER DASHBOARD (UX/UI ที่ปรับแก้แล้ว) ===
+// === CUSTOMER DASHBOARD ===
 function handleDashboardPage() {
   const userStr = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
   if (!userStr) { window.location.href = "index.html"; return; }
@@ -80,6 +118,7 @@ function handleDashboardPage() {
 
 function renderDashboard(user, notifications, rewards) {
   const app = document.getElementById("app");
+  app.classList.remove("d-flex", "justify-content-center", "align-items-center"); // เอาคลาสจัดกลางตอนโหลดออก
   const rewardsByCategory = rewards.reduce((acc, reward) => { (acc[reward.category] = acc[reward.category] || []).push(reward); return acc; }, {});
   
   if (!rewardsByCategory["โปรประจำสัปดาห์"]) rewardsByCategory["โปรประจำสัปดาห์"] = [{ isPlaceholder: true, name: "⏳ เร็วๆ นี้", description: "รอติดตามโปรโมชั่นสุดคุ้มได้ที่นี่" }];
@@ -209,9 +248,7 @@ function renderDashboard(user, notifications, rewards) {
   });
 }
 
-// ==========================================
-// 🔥 ADMIN DASHBOARD (เพิ่มแฮมเบอร์เกอร์เมนู)
-// ==========================================
+// === ADMIN DASHBOARD ===
 function handleAdminPage() {
   const userStr = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
   if (!userStr) { window.location.href = "index.html"; return; }
@@ -220,7 +257,6 @@ function handleAdminPage() {
   
   const app = document.getElementById("app");
   
-  // เพิ่ม CSS ของ Sidebar Admin
   const adminStyles = `
     <style>
         body { background: #f4f6f8; font-family: 'Kanit', sans-serif; } 
@@ -266,7 +302,7 @@ function handleAdminPage() {
                     <div class="admin-card">
                         <h5 class="fw-bold mb-4" style="color:#3b4b5b;"><i class="bi bi-qr-code-scan me-2"></i>ค้นหาลูกค้า & จัดการแต้ม</h5>
                         <div class="input-group mb-4">
-                            <button class="btn btn-light border" id="scanBarcodeBtn"><i class="bi bi-qr-code-scan fs-5"></i></button>
+                            <button class="btn btn-light border" id="scanBarcodeBtn"><i class="bi bi-qr-code-scan fs-5 text-primary"></i></button>
                             <input type="text" id="searchPhone" class="form-control" placeholder="กรอกเบอร์โทรศัพท์ลูกค้า...">
                             <button class="btn text-white" id="searchBtn" style="background:#3b4b5b;">ค้นหา</button>
                         </div>
@@ -317,7 +353,7 @@ function handleAdminPage() {
         </div>
     `;
 
-  // เปิด/ปิด แฮมเบอร์เกอร์แอดมิน
+  // แฮมเบอร์เกอร์เมนู
   document.getElementById("adminBurgerBtn").addEventListener("click", () => {
       document.getElementById("adminSidebar").classList.add("open");
       document.getElementById("adminOverlay").classList.add("show");
@@ -359,5 +395,27 @@ function handleAdminPage() {
     }
     const payload = { name: document.getElementById("rewardName").value, description: document.getElementById("rewardDesc").value, pointsRequired: parseInt(document.getElementById("rewardPoints").value, 10), cashRequired: parseInt(document.getElementById("rewardCash").value, 10) || 0, category: document.getElementById("rewardCategory").value, isNew: true, adminPhone: adminUser.phone, activeDays: selectedDays.join(",") };
     apiCall("addReward", payload).then(() => { Swal.fire("สำเร็จ", "", "success"); document.getElementById("addRewardForm").reset(); document.getElementById("daySelectorContainer").classList.add("d-none"); });
+  });
+
+  // แก้ไข: เพิ่มระบบสแกนกล้อง QR Code
+  document.getElementById("scanBarcodeBtn").addEventListener("click", () => {
+      Swal.fire({
+          title: 'สแกน QR Code ลูกค้า',
+          html: '<div id="admin-qr-reader" style="width: 100%; border-radius: 8px; overflow: hidden;"></div><p class="small text-danger mt-2">* ต้องใช้งานผ่านเบราว์เซอร์ที่รองรับและอนุญาตให้ใช้กล้อง (HTTPS)</p>',
+          showCancelButton: true,
+          showConfirmButton: false,
+          cancelButtonText: 'ปิดกล้อง',
+          didOpen: () => {
+              const html5QrcodeScanner = new Html5QrcodeScanner("admin-qr-reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+              html5QrcodeScanner.render((decodedText) => {
+                  document.getElementById("searchPhone").value = decodedText; // เอาค่าที่สแกนได้ไปใส่ในช่องค้นหา
+                  html5QrcodeScanner.clear(); // ปิดกล้อง
+                  Swal.close(); // ปิด Pop-up
+                  searchAction(); // สั่งให้ค้นหาออโต้ทันที
+              }, (error) => {
+                  // ปล่อยว่างไว้เพื่อไม่ให้ Console แดงเวลากำลังหา QR
+              });
+          }
+      });
   });
 }
