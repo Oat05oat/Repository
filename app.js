@@ -269,7 +269,7 @@ function renderDashboard(user, notifications, rewards) {
   app.innerHTML = customStyles + `
     <div class="nav-navy position-relative">
         <div class="p-4 d-flex justify-content-between">
-            <h4 class="text-white fw-bold">LuckyShop24</h4>
+            <h4 class="text-white fw-bold">LuckyPository</h4>
             <div id="notiBtn" class="text-white position-relative" style="cursor:pointer;"><i class="bi bi-bell-fill fs-4"></i>${notifications.length > 0 ? '<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.6rem;">'+notifications.length+'</span>' : ''}</div>
         </div>
     </div>
@@ -457,3 +457,4 @@ window.quickOp = async (act, phone) => {
     }
     Swal.fire("สำเร็จ", "ดำเนินการแล้ว", "success");
 };
+
