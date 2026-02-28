@@ -23,7 +23,7 @@ function showLoading(title = "Loading...") {
 }
 
 function apiCall(action, payload) {
-  showLoading("กำลังประมวลผล...");
+  showLoading("กำลังโหลด...");
   return fetch(GAS_URL, {
     method: "POST",
     redirect: "follow",
@@ -1056,4 +1056,5 @@ function renderAdminPage(adminUser) {
       .catch((err) => console.error(err));
   });
 }
+
 
