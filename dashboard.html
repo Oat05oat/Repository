@@ -14,14 +14,14 @@
         body { font-family: "Kanit", sans-serif; background: linear-gradient(180deg, #556677 0%, #f4f6f8 350px); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; margin: 0; }
         #app { flex: 1; display: flex; flex-direction: column; }
         #loading { margin: auto; text-align: center; }
-        .spinner-border { color: var(--primary-color); width: 3rem; height: 3rem; border-width: 0.25em; }
+        .spinner-border { color: #fff; width: 3rem; height: 3rem; border-width: 0.25em; }
     </style>
 </head>
 <body>
     <div id="app">
-        <div id="loading" class="mt-5">
-            <h3 class="mb-4 fw-bold text-white">กำลังโหลดข้อมูล...</h3>
-            <div class="spinner-border text-white" role="status"><span class="visually-hidden">Loading...</span></div>
+        <div id="loading">
+            <h3 class="mb-4 fw-bold text-white">กำลังโหลดข้อมูลของคุณ...</h3>
+            <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
         </div>
     </div>
 
