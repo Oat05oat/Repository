@@ -12,7 +12,7 @@ if (typeof Html5QrcodeScanner === "undefined") {
 const MAINTENANCE_ENABLED = false;
 const RE_ENABLE_DATETIME_STRING = "2025-07-23T02:00:00";
 
-function showLoading(title = "กำลังโหลด...") {
+function showLoading(title = "Loading...") {
   Swal.fire({
     title: title,
     allowOutsideClick: false,
@@ -1056,3 +1056,4 @@ function renderAdminPage(adminUser) {
       .catch((err) => console.error(err));
   });
 }
+
