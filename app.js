@@ -62,7 +62,7 @@ function handleLoginPage() {
     document.querySelector(".auth-card").style.display = "none";
     Swal.fire({
       icon: "info",
-      title: "ปิดปรับปรุงระบบชั่วคราว",
+      title: "ปิดปรับปรุงระบบชั่วคราว ขออภัยในความไม่สะดวก",
       allowOutsideClick: false,
       showConfirmButton: false,
     });
@@ -1056,5 +1056,6 @@ function renderAdminPage(adminUser) {
       .catch((err) => console.error(err));
   });
 }
+
 
 
