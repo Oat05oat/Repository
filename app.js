@@ -59,12 +59,43 @@ document.addEventListener("DOMContentLoaded", () => {
 // === Login Page (รหัสผ่าน & OTP) ===
 function handleLoginPage() {
   if (MAINTENANCE_ENABLED && new Date() < new Date(RE_ENABLE_DATETIME_STRING)) {
-    document.querySelector(".auth-card").style.display = "none";
+    const authCard = document.querySelector(".auth-card");
+    if (authCard) authCard.style.display = "none";
+
+    // คำนวณวันที่ให้แสดงผลแบบภาษาไทยสวยๆ
+    const reEnableDate = new Date(RE_ENABLE_DATETIME_STRING).toLocaleString('th-TH', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
     Swal.fire({
-      icon: "info",
-      title: "ปิดปรับปรุงระบบชั่วคราว ขออภัยในความไม่สะดวก",
+      title: '<h3 class="fw-bold mt-2" style="color: #1e293b;">ปิดปรับปรุงระบบชั่วคราว</h3>',
+      html: `
+        <div class="text-center p-2">
+          <div class="mb-4">
+            <i class="bi bi-gear-fill text-secondary" style="font-size: 4rem; animation: rotate 4s linear infinite; display: inline-block;"></i>
+          </div>
+          <p class="text-muted mb-4">ขออภัยในความไม่สะดวก ขณะนี้เรากำลังพัฒนาระบบเพื่อประสิทธิภาพที่ดียิ่งขึ้น</p>
+          <div class="p-3 rounded-4 border" style="background: #f1f5f9; border-style: dashed !important;">
+            <small class="text-primary fw-bold d-block mb-1">คาดว่าจะเปิดใช้งานอีกครั้งในวันที่:</small>
+            <span class="text-dark fw-bold" style="font-size: 1.1rem;">${reEnableDate} น.</span>
+          </div>
+          <div class="mt-4 small text-muted fst-italic">ขอบคุณสมาชิก LuckyShop24 ทุกท่านที่ไว้วางใจ</div>
+        </div>
+        <style>
+          @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          .swal2-popup { border-top: 8px solid #1e293b !important; }
+        </style>
+      `,
       allowOutsideClick: false,
       showConfirmButton: false,
+      width: '500px',
+      customClass: {
+        popup: 'rounded-5 shadow-lg'
+      }
     });
     return;
   }
@@ -1056,6 +1087,7 @@ function renderAdminPage(adminUser) {
       .catch((err) => console.error(err));
   });
 }
+
 
 
 
