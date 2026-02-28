@@ -9,7 +9,7 @@ if (typeof Html5QrcodeScanner === "undefined") {
   document.head.appendChild(script);
 }
 
-const MAINTENANCE_ENABLED = false;
+const MAINTENANCE_ENABLED = true;
 const RE_ENABLE_DATETIME_STRING = "2026-02-28T02:00:00";
 
 function showLoading(title = "Loading...") {
@@ -1056,6 +1056,7 @@ function renderAdminPage(adminUser) {
       .catch((err) => console.error(err));
   });
 }
+
 
 
 
