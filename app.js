@@ -10,7 +10,7 @@ if (typeof Html5QrcodeScanner === "undefined") {
 }
 
 const MAINTENANCE_ENABLED = true;
-const RE_ENABLE_DATETIME_STRING = "2026-12-31T23:59:59";
+const RE_ENABLE_DATETIME_STRING = "2026-02-28T21:30:59";
 
 function showLoading(title = "Loading...") {
   Swal.fire({
@@ -1056,3 +1056,4 @@ function renderAdminPage(adminUser) {
       .catch((err) => console.error(err));
   });
 }
+
