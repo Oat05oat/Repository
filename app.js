@@ -5,9 +5,9 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwz_WIhmE84bYpcTkMrE6tK
 const MAINTENANCE_ENABLED = false;
 const RE_ENABLE_DATETIME_STRING = "2026-02-28T22:30:59";
 
-// --- ฟังก์ชันสื่อสาร API ส่วนกลาง ---
+// --- ฟังก์ชันสื่อสาร API ส่วนกลาง (แก้ไขบั๊กหมุนค้าง) ---
 async function apiCall(action, payload) {
-    if (!Swal.isVisible()) showLoading();
+    showLoading(); // เปิดตัวโหลดเมื่อเริ่มเรียก API
     try {
         const response = await fetch(GAS_URL, {
             method: "POST",
@@ -18,59 +18,99 @@ async function apiCall(action, payload) {
         if (res.status === "error") throw new Error(res.message);
         return res.data;
     } catch (err) {
+        // หากหลังบ้าน Error ให้ปิดตัวโหลดก่อน แล้วแจ้งเตือน
+        Swal.close();
         Swal.fire({ icon: "error", title: "เกิดข้อผิดพลาด", text: err.message, confirmButtonColor: '#1e293b' });
         throw err;
     } finally { 
-        if (action !== "getFullDashboardData" && action !== "searchUser") Swal.close(); 
+        // มั่นใจได้ 100% ว่าตัวหมุนจะถูกปิด ไม่ว่าจะโหลดสำเร็จหรือพัง
+        Swal.close(); 
     }
 }
 
+function showPasswordReset() {
+    Swal.fire({
+        title: 'ลืมรหัสผ่าน',
+        html: `<p class="small text-muted mb-3">กรุณาระบุเบอร์โทรศัพท์เพื่อขอรับรหัสชั่วคราวทางอีเมล</p><input id="resetIdentifier" type="text" class="form-control text-center py-2" placeholder="เบอร์โทรศัพท์">`,
+        showCancelButton: true, confirmButtonText: "ขอ OTP", confirmButtonColor: "#4f46e5", showCloseButton: true,
+        preConfirm: () => {
+            const val = document.getElementById("resetIdentifier").value;
+            if (!val) Swal.showValidationMessage("กรุณากรอกข้อมูล!");
+            return val;
+        }
+    }).then((res) => {
+        if (res.isConfirmed && res.value) {
+            apiCall("requestEmailOtp", { identifier: res.value }).then((otpResponse) => {
+                Swal.fire({
+                    title: "ยืนยัน OTP (ลืมรหัส)",
+                    html: `<div class="text-center mb-2 small text-muted">รหัสอ้างอิง: ${otpResponse.refno}</div><input id="resetOtpCode" class="form-control text-center fs-4 py-2" placeholder="รหัส 6 หลัก" maxlength="6">`,
+                    showCancelButton: true, confirmButtonText: "ยืนยันรหัส", confirmButtonColor: "#4f46e5", showCloseButton: true,
+                    preConfirm: () => {
+                        const val = document.getElementById("resetOtpCode").value;
+                        if (!val) Swal.showValidationMessage("กรุณากรอกรหัส!");
+                        return val;
+                    }
+                }).then((otpRes) => {
+                    if (otpRes.isConfirmed && otpRes.value) {
+                        apiCall("verifyEmailOtp", { identifier: res.value, otp: otpRes.value }).then(() => {
+                            Swal.fire({
+                                title: "ตั้งรหัสผ่านใหม่",
+                                html: `<input id="newPassInp" type="password" class="form-control text-center py-2" placeholder="รหัสผ่านใหม่">`,
+                                showCancelButton: true, confirmButtonText: "บันทึกรหัสใหม่", confirmButtonColor: "#4f46e5", showCloseButton: true,
+                                preConfirm: () => {
+                                    const val = document.getElementById("newPassInp").value;
+                                    if (!val) Swal.showValidationMessage("กรุณากรอกรหัส!");
+                                    return val;
+                                }
+                            }).then((passRes) => {
+                                if (passRes.isConfirmed && passRes.value) {
+                                    apiCall("updatePassword", { identifier: res.value, newHashedPassword: hashPassword(passRes.value) }).then(() =>
+                                        Swal.fire({ icon: "success", title: "สำเร็จ", text: "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว", confirmButtonColor: "#1e293b" })
+                                    );
+                                }
+                            });
+                        });
+                    }
+                });
+            });
+        }
+    });
+}
+
 function showLoading() {
-    Swal.fire({ title: 'กำลังประมวลผล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    // ป้องกันการเปิดซ้อนซ้ำจนค้าง
+    if (Swal.isVisible() && Swal.getTitle() && Swal.getTitle().textContent === "กำลังประมวลผล...") return;
+    Swal.fire({ 
+        title: 'กำลังประมวลผล...', 
+        allowOutsideClick: false, 
+        showConfirmButton: false,
+        didOpen: () => { Swal.showLoading(); } 
+    });
 }
 
 function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
 
-// --- ระบบ Router ตัวควบคุมหน้าเว็บ ---
+// --- Router ---
 document.addEventListener("DOMContentLoaded", () => {
-    const path = window.location.pathname.toLowerCase();
+    const page = window.location.pathname.split("/").pop() || "index.html";
     const yearSpan = document.getElementById("copyright-year") || document.getElementById("year");
     if (yearSpan) yearSpan.textContent = new Date().getFullYear();
 
-    if (path.includes("admin")) handleAdminPage();
-    else if (path.includes("dashboard")) handleDashboardPage();
-    else if (path.includes("register")) handleRegisterPage();
+    if (page.includes("admin.html")) handleAdminPage();
+    else if (page.includes("dashboard.html")) handleDashboardPage();
+    else if (page.includes("register.html")) handleRegisterPage();
     else handleLoginPage();
 });
 
-// ==========================================
-// [1] หน้าเข้าสู่ระบบ (LOGIN PAGE)
-// ==========================================
+// === Login Page ===
 function handleLoginPage() {
     if (MAINTENANCE_ENABLED && new Date() < new Date(RE_ENABLE_DATETIME_STRING)) {
         const authCard = document.querySelector(".auth-card");
         if (authCard) authCard.style.display = "none";
-
-        const reEnableDate = new Date(RE_ENABLE_DATETIME_STRING).toLocaleString('th-TH', {
-            day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-        });
-
+        const reEnableDate = new Date(RE_ENABLE_DATETIME_STRING).toLocaleString('th-TH', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         Swal.fire({
             title: '<h3 class="fw-bold mt-2" style="color: #1e293b;">ปิดปรับปรุงระบบชั่วคราว</h3>',
-            html: `
-                <div class="text-center p-2">
-                    <div class="mb-4">
-                        <i class="bi bi-gear-fill text-secondary" style="font-size: 4rem; animation: rotate 4s linear infinite; display: inline-block;"></i>
-                    </div>
-                    <p class="text-muted mb-4">ขออภัยในความไม่สะดวก ขณะนี้เรากำลังพัฒนาระบบเพื่อประสิทธิภาพที่ดียิ่งขึ้น</p>
-                    <div class="p-3 rounded-4 border" style="background: #f1f5f9; border-style: dashed !important;">
-                        <small class="text-primary fw-bold d-block mb-1">คาดว่าจะเปิดใช้งานอีกครั้งในวันที่:</small>
-                        <span class="text-dark fw-bold" style="font-size: 1.1rem;">${reEnableDate} น.</span>
-                    </div>
-                    <div class="mt-4 small text-muted fst-italic">ขอบคุณสมาชิก LuckyShop24 ทุกท่านที่ไว้วางใจ</div>
-                </div>
-                <style> @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } </style>
-            `,
+            html: `<div class="text-center p-2"><div class="mb-4"><i class="bi bi-gear-fill text-secondary" style="font-size: 4rem; animation: rotate 4s linear infinite; display: inline-block;"></i></div><p class="text-muted mb-4">ขออภัยในความไม่สะดวก ขณะนี้เรากำลังพัฒนาระบบเพื่อประสิทธิภาพที่ดียิ่งขึ้น</p><div class="p-3 rounded-4 border" style="background: #f1f5f9; border-style: dashed !important;"><small class="text-primary fw-bold d-block mb-1">คาดว่าจะเปิดใช้งานอีกครั้งในวันที่:</small><span class="text-dark fw-bold" style="font-size: 1.1rem;">${reEnableDate} น.</span></div></div><style>@keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>`,
             allowOutsideClick: false, showConfirmButton: false, width: '500px', customClass: { popup: 'rounded-5 shadow-lg' }
         });
         return;
@@ -141,59 +181,12 @@ function handleLoginPage() {
     if (forgotPasswordLink) {
         forgotPasswordLink.addEventListener("click", (e) => {
             e.preventDefault();
-            Swal.fire({
-                title: "ลืมรหัสผ่าน",
-                html: `<p class="small text-muted mb-3">กรุณาระบุข้อมูลเพื่อขอรับรหัสผ่านชั่วคราวทางอีเมล</p><input id="swal-input-identifier" type="text" class="form-control text-center py-2" placeholder="เบอร์โทร หรือ อีเมล">`,
-                showCancelButton: true, confirmButtonText: "ขอ OTP", confirmButtonColor: "#4f46e5", showCloseButton: true, customClass: { popup: "rounded-5" },
-                preConfirm: () => {
-                    const val = document.getElementById("swal-input-identifier").value;
-                    if (!val) Swal.showValidationMessage("กรุณากรอกข้อมูล!");
-                    return val;
-                }
-            }).then((res) => {
-                if (res.isConfirmed && res.value) {
-                    apiCall("requestEmailOtp", { identifier: res.value }).then((otpResponse) => {
-                        Swal.fire({
-                            title: "ยืนยัน OTP (ลืมรหัส)",
-                            html: `<div class="text-center mb-2 small text-muted">รหัสอ้างอิง: ${otpResponse.refno}</div><input id="swal-input-otp" class="form-control text-center fs-4 py-2" placeholder="รหัส 6 หลัก" maxlength="6">`,
-                            showCancelButton: true, confirmButtonText: "ยืนยันรหัส", confirmButtonColor: "#4f46e5", showCloseButton: true, customClass: { popup: "rounded-5" },
-                            preConfirm: () => {
-                                const val = document.getElementById("swal-input-otp").value;
-                                if (!val) Swal.showValidationMessage("กรุณากรอกรหัส!");
-                                return val;
-                            }
-                        }).then((otpRes) => {
-                            if (otpRes.isConfirmed && otpRes.value) {
-                                apiCall("verifyEmailOtp", { identifier: res.value, otp: otpRes.value }).then(() => {
-                                    Swal.fire({
-                                        title: "ตั้งรหัสผ่านใหม่",
-                                        html: `<input id="swal-new-pass" type="password" class="form-control text-center py-2" placeholder="รหัสผ่านใหม่">`,
-                                        showCancelButton: true, confirmButtonText: "บันทึกรหัสใหม่", confirmButtonColor: "#4f46e5", showCloseButton: true, customClass: { popup: "rounded-5" },
-                                        preConfirm: () => {
-                                            const val = document.getElementById("swal-new-pass").value;
-                                            if (!val) Swal.showValidationMessage("กรุณากรอกรหัส!");
-                                            return val;
-                                        }
-                                    }).then((passRes) => {
-                                        if (passRes.isConfirmed && passRes.value) {
-                                            apiCall("updatePassword", { identifier: res.value, newHashedPassword: hashPassword(passRes.value) }).then(() =>
-                                                Swal.fire({ icon: "success", title: "สำเร็จ", text: "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว", confirmButtonColor: "#1e293b" })
-                                            );
-                                        }
-                                    });
-                                });
-                            }
-                        });
-                    });
-                }
-            });
+            showPasswordReset();
         });
     }
 }
 
-// ==========================================
-// [2] หน้าสมัครสมาชิก (REGISTER PAGE) - ติ๊กผ่านเปิดปุ่มสิทธิ์
-// ==========================================
+// === Register ===
 function handleRegisterPage() {
     const registerForm = document.getElementById("registerForm");
     const registerBtn = document.getElementById("registerBtn");
@@ -212,13 +205,7 @@ function handleRegisterPage() {
             e.preventDefault();
             Swal.fire({
                 title: '<h5 class="fw-bold mb-0" style="color: #1e293b;">นโยบายความเป็นส่วนตัว</h5>',
-                html: `
-                  <div class="text-start mt-3 p-3 bg-light rounded-4 border" style="font-size: 0.9rem; color: #334155; max-height: 300px; overflow-y: auto;">
-                    <p class="mb-3"><b>1. การจัดเก็บข้อมูล:</b> ระบบจะจัดเก็บข้อมูลเท่าที่จำเป็น ได้แก่ ชื่อ นามสกุล เบอร์โทรศัพท์ และอีเมลของท่าน</p>
-                    <p class="mb-3"><b>2. จุดประสงค์ในการใช้งาน:</b> ข้อมูลสมาชิกจะถูกนำไปใช้ในกระบวนการคำนวณแต้ม, ตรวจสอบสิทธิ์การแลกรางวัล และส่งรหัส OTP ทางอีเมลเพื่อความปลอดภัย</p>
-                    <p class="mb-0"><b>3. การรักษาความปลอดภัยข้อมูล:</b> LuckyShop24 มีมาตรการคุ้มครองข้อมูลของท่านเป็นอย่างดี และจะไม่มีการแชร์หรือเผยแพร่สิทธิ์ข้อมูลสมาชิกให้แก่บุคคลภายนอกในทุกกรณี</p>
-                  </div>
-                `,
+                html: `<div class="text-start mt-3 p-3 bg-light rounded-4 border" style="font-size: 0.9rem; color: #334155; max-height: 300px; overflow-y: auto;"><p class="mb-3"><b>1. การจัดเก็บข้อมูล:</b> ระบบจะจัดเก็บข้อมูลเท่าที่จำเป็น ได้แก่ ชื่อ นามสกุล เบอร์โทรศัพท์ และอีเมลของท่าน</p><p class="mb-3"><b>2. จุดประสงค์ในการใช้งาน:</b> ข้อมูลสมาชิกจะถูกนำไปใช้ในกระบวนการคำนวณแต้ม, ตรวจสอบสิทธิ์การแลกรางวัล และส่งรหัส OTP ทางอีเมลเพื่อความปลอดภัย</p><p class="mb-0"><b>3. การรักษาความปลอดภัยข้อมูล:</b> LuckyShop24 มีมาตรการคุ้มครองข้อมูลของท่านเป็นอย่างดี และจะไม่มีการแชร์หรือเผยแพร่สิทธิ์ข้อมูลสมาชิกให้แก่บุคคลภายนอกในทุกกรณี</p></div>`,
                 showCloseButton: true, confirmButtonText: 'ฉันเข้าใจและยอมรับ', confirmButtonColor: '#1e293b', customClass: { popup: 'rounded-5 shadow-lg' }
             });
         });
@@ -247,10 +234,8 @@ function handleRegisterPage() {
     }
 }
 
-// ==========================================
-// [3] หน้าลูกค้า (DASHBOARD) - ประวัติเรียกดูคูปอง QR ย้อนหลังได้
-// ==========================================
-async function handleDashboardPage() {
+// === Dashboard (ลูกค้า) ===
+function handleDashboardPage() {
     const userStr = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
     if (!userStr) { window.location.href = "index.html"; return; }
     const loggedInUser = JSON.parse(userStr);
@@ -264,20 +249,7 @@ window.viewCoupon = (code, name, status) => {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(code)}`;
   Swal.fire({
     title: '<h5 class="fw-bold mb-0">รายละเอียดคูปองรางวัล</h5>',
-    html: `
-      <div class="p-3 bg-light rounded-4 border text-center">
-        <p class="mb-2"><b>${name}</b></p>
-        <div class="bg-white p-3 border rounded-4 d-inline-block mb-3 shadow-sm">
-          <img src="${qrUrl}" style="width:170px;" alt="Reward QR">
-        </div>
-        <div class="p-3 border border-2 border-dashed rounded-4 fw-bold fs-4 bg-white text-primary mb-2" style="letter-spacing: 2px;">
-          ${code}
-        </div>
-        <p class="mt-2 fw-bold ${status === 'used' ? 'text-success' : 'text-warning'}" style="font-size: 0.95rem;">
-          สถานะ: ${status === 'used' ? 'ใช้งานแล้ว' : 'รอใช้งานสิทธิ์ที่หน้าร้าน'}
-        </p>
-      </div>
-    `,
+    html: `<div class="p-3 bg-light rounded-4 border text-center"><p class="mb-2"><b>${name}</b></p><div class="bg-white p-3 border rounded-4 d-inline-block mb-3 shadow-sm"><img src="${qrUrl}" style="width:170px;" alt="Reward QR"></div><div class="p-3 border border-2 border-dashed rounded-4 fw-bold fs-4 bg-white text-primary mb-2" style="letter-spacing: 2px;">${code}</div><p class="mt-2 fw-bold ${status === 'used' ? 'text-success' : 'text-warning'}" style="font-size: 0.95rem;">สถานะ: ${status === 'used' ? 'ใช้งานแล้ว' : 'รอใช้งานสิทธิ์ที่หน้าร้าน'}</p></div>`,
     showCloseButton: true, confirmButtonText: 'ปิดหน้าต่าง', confirmButtonColor: '#1e293b', customClass: { popup: 'rounded-5' }
   });
 };
@@ -478,9 +450,7 @@ function renderDashboard(user, notifications, rewards) {
   document.getElementById("btnLogOut").onclick = () => { localStorage.clear(); sessionStorage.clear(); window.location.href = "index.html"; };
 }
 
-// ==========================================
-// [4] หน้าผู้ดูแลระบบ (ADMIN PAGE) - แบ่งคอลัมน์ซ้าย-ขวาแบบดั้งเดิมตามภาพเป๊ะๆ
-// ==========================================
+// === หน้า Admin ===
 function handleAdminPage() {
   const userStr = localStorage.getItem("loggedInUser") || sessionStorage.getItem("loggedInUser");
   if (!userStr || !JSON.parse(userStr).isAdmin) { window.location.href = "index.html"; return; }
